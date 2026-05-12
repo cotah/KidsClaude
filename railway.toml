@@ -26,5 +26,4 @@ nixpacksConfigPath = "apps/aprendizagem/backend/nixpacks.toml"
 startCommand = "cd apps/aprendizagem/backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/v1/health"
 healthcheckTimeout = 100
-restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
