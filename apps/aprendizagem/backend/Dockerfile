@@ -42,9 +42,8 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copia código da aplicação
+# Copia código da aplicação (testes ficam fora da imagem de producao)
 COPY app/ ./app/
-COPY tests/ ./tests/
 
 # Configuração de ambiente
 ENV PYTHONUNBUFFERED=1

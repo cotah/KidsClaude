@@ -19,11 +19,11 @@
 #     como vivo e direcionar trafego.
 
 [build]
-builder = "NIXPACKS"
-nixpacksConfigPath = "apps/aprendizagem/backend/nixpacks.toml"
+builder = "DOCKERFILE"
+dockerfilePath = "apps/aprendizagem/backend/Dockerfile"
 
 [deploy]
-startCommand = "cd apps/aprendizagem/backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/v1/health"
 healthcheckTimeout = 100
 restartPolicyMaxRetries = 3

@@ -35,6 +35,12 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# Hatchling nao descobre o pacote sozinho porque o name do projeto
+# (aprendizagem-backend) nao bate com a pasta de codigo (app). Aponta
+# explicito para evitar erro "unable to determine which files to ship".
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
