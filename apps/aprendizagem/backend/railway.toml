@@ -3,6 +3,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "bash -c 'uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
+startCommand = "bash -c './run_migrations.sh && uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
 healthcheckPath = "/v1/health"
 healthcheckTimeout = 100

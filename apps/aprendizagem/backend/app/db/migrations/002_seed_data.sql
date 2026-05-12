@@ -1,6 +1,22 @@
--- Migração de dados seed: 12 lições, 12 badges, desafios e prompt templates
+-- Migration 002 (corrigida) - dados seed: 12 lições, 12 badges, 12 desafios, 12 prompt templates
+--
+-- Correção principal:
+--   O INSERT em `challenges` falhava com "column 'question' is of type jsonb but
+--   expression is of type text" porque o CASE retorna tipo TEXT e o Postgres nao
+--   converte implicitamente para JSONB em INSERT...SELECT. Solucao: cast (...)::jsonb
+--   no resultado de cada CASE.
+--
+-- Idempotencia:
+--   A 002 original nao tinha BEGIN, entao cada statement comitava sozinho. A primeira
+--   tentativa ja inseriu badges e lessons antes de falhar em challenges. Esta versao
+--   usa BEGIN/COMMIT + ON CONFLICT DO NOTHING para ser segura de re-rodar quantas
+--   vezes precisar.
 
--- Badges do MVP (seção 11.4 do spec)
+BEGIN;
+
+-- =========================================================
+-- 1) Badges (12 conquistas do MVP - spec secao 11.4)
+-- =========================================================
 INSERT INTO badges (code, name, description, icon, unlock_rule) VALUES
 ('FIRST_STEPS', 'Primeiros Passos', 'Completou sua primeira lição', 'first-steps', '{"type": "lesson_completed", "count": 1}'),
 ('QUICK_LEARNER', 'Aprendiz Rápido', 'Completou 5 lições', 'quick-learner', '{"type": "lesson_completed", "count": 5}'),
@@ -13,9 +29,12 @@ INSERT INTO badges (code, name, description, icon, unlock_rule) VALUES
 ('CURIOUS_MIND', 'Mente Curiosa', 'Explorou 3 trilhas diferentes', 'curious-mind', '{"type": "different_tracks", "count": 3}'),
 ('STORYTELLER', 'Contador de Histórias', 'Criou 5 histórias completas no chat', 'storyteller', '{"type": "story_sessions", "count": 5}'),
 ('LEVEL_5', 'Nível 5', 'Alcançou o nível 5', 'level-5', '{"type": "level_reached", "level": 5}'),
-('LEVEL_10', 'Lendário', 'Alcançou o nível 10', 'level-10', '{"type": "level_reached", "level": 10}');
+('LEVEL_10', 'Lendário', 'Alcançou o nível 10', 'level-10', '{"type": "level_reached", "level": 10}')
+ON CONFLICT (code) DO NOTHING;
 
--- Lições para faixa 6-8 anos (6 lições)
+-- =========================================================
+-- 2) Licoes faixa 6-8 anos (6 licoes)
+-- =========================================================
 INSERT INTO lessons (slug, title, description, age_band, order_index, content_blocks, xp_reward) VALUES
 ('ola-atena-6-8', 'Olá, Atena!', 'Conheça sua nova amiga robô que adora conversar', '6-8', 1,
 '[
@@ -57,9 +76,12 @@ INSERT INTO lessons (slug, title, description, age_band, order_index, content_bl
     {"type": "text", "content": "Existem segredos que só você e seus pais podem saber! 🔒"},
     {"type": "image", "src": "safety-first.png", "alt": "Escudo protetor"},
     {"type": "text", "content": "Nunca conte seu nome completo, endereço ou telefone para mim. Eu não preciso saber!"}
-]', 60);
+]', 60)
+ON CONFLICT (slug) DO NOTHING;
 
--- Lições para faixa 9-12 anos (6 lições)
+-- =========================================================
+-- 3) Licoes faixa 9-12 anos (6 licoes)
+-- =========================================================
 INSERT INTO lessons (slug, title, description, age_band, order_index, content_blocks, xp_reward) VALUES
 ('como-ia-funciona-9-12', 'Como a IA Funciona', 'Descubra os segredos por trás da inteligência artificial', '9-12', 1,
 '[
@@ -101,14 +123,30 @@ INSERT INTO lessons (slug, title, description, age_band, order_index, content_bl
     {"type": "text", "content": "Com grandes poderes vêm grandes responsabilidades! 🦸‍♂️"},
     {"type": "image", "src": "ethics.png", "alt": "Balança da justiça"},
     {"type": "text", "content": "IA deve ser usada para ajudar, não para enganar. Sempre seja honesto sobre quando usa minha ajuda!"}
-]', 100);
+]', 100)
+ON CONFLICT (slug) DO NOTHING;
 
--- Desafios para cada lição (múltipla escolha simples)
+-- =========================================================
+-- 4) Desafios (1 multiple_choice por licao = 12 total)
+--    FIX: cast (...)::jsonb no resultado de cada CASE para evitar
+--    erro 42804 "column is of type jsonb but expression is of type text".
+--    Sem ON CONFLICT: nao ha chave natural unica em challenges; em
+--    re-run, primeiro deletamos as linhas antigas dessa migracao.
+-- =========================================================
+-- Limpeza preventiva: remove desafios das 12 licoes seed caso re-rodada.
+DELETE FROM challenges
+WHERE lesson_id IN (SELECT id FROM lessons WHERE slug IN (
+    'ola-atena-6-8','primeira-conversa-6-8','contando-historias-6-8',
+    'aprendendo-brincando-6-8','sendo-educado-6-8','seguranca-primeiro-6-8',
+    'como-ia-funciona-9-12','prompts-inteligentes-9-12','criatividade-com-ia-9-12',
+    'pesquisa-responsavel-9-12','colaboracao-humano-ia-9-12','etica-e-ia-9-12'
+));
+
 INSERT INTO challenges (lesson_id, kind, question, correct_answer, xp_reward)
 SELECT
     l.id,
     'multiple_choice',
-    CASE l.slug
+    (CASE l.slug
         WHEN 'ola-atena-6-8' THEN '{"question": "Como a Atena se apresentou?", "options": ["Como uma amiga robô", "Como uma professora", "Como um jogo", "Como um livro"]}'
         WHEN 'primeira-conversa-6-8' THEN '{"question": "Como você conversa com a Atena?", "options": ["Tocando nos botões", "Gritando", "Escrevendo cartas", "Cantando"]}'
         WHEN 'contando-historias-6-8' THEN '{"question": "Quantas histórias a Atena sabe?", "options": ["Milhares", "Dez", "Três", "Nenhuma"]}'
@@ -121,8 +159,8 @@ SELECT
         WHEN 'pesquisa-responsavel-9-12' THEN '{"question": "Informações da IA devem sempre ser:", "options": ["Verificadas", "Aceitas sem questionar", "Ignoradas", "Decoradas"]}'
         WHEN 'colaboracao-humano-ia-9-12' THEN '{"question": "Humanos e IA trabalham melhor:", "options": ["Em equipe", "Separados", "Competindo", "Um substituindo o outro"]}'
         WHEN 'etica-e-ia-9-12' THEN '{"question": "Ao usar IA, você deve ser:", "options": ["Honesto sobre sua ajuda", "Secreto", "Competitivo", "Independente"]}'
-    END,
-    CASE l.slug
+    END)::jsonb,
+    (CASE l.slug
         WHEN 'ola-atena-6-8' THEN '{"answer": 0}'
         WHEN 'primeira-conversa-6-8' THEN '{"answer": 0}'
         WHEN 'contando-historias-6-8' THEN '{"answer": 0}'
@@ -135,11 +173,27 @@ SELECT
         WHEN 'pesquisa-responsavel-9-12' THEN '{"answer": 0}'
         WHEN 'colaboracao-humano-ia-9-12' THEN '{"answer": 0}'
         WHEN 'etica-e-ia-9-12' THEN '{"answer": 0}'
-    END,
+    END)::jsonb,
     20
-FROM lessons l;
+FROM lessons l
+WHERE l.slug IN (
+    'ola-atena-6-8','primeira-conversa-6-8','contando-historias-6-8',
+    'aprendendo-brincando-6-8','sendo-educado-6-8','seguranca-primeiro-6-8',
+    'como-ia-funciona-9-12','prompts-inteligentes-9-12','criatividade-com-ia-9-12',
+    'pesquisa-responsavel-9-12','colaboracao-humano-ia-9-12','etica-e-ia-9-12'
+);
 
--- Prompt templates para faixa 6-8 (botões fechados)
+-- =========================================================
+-- 5) Prompt templates - faixa 6-8 (botoes fechados, sem slots)
+-- =========================================================
+-- Limpeza preventiva: remove templates 6-8 das 12 licoes seed caso re-rodada.
+DELETE FROM prompt_templates
+WHERE age_band = '6-8'
+  AND lesson_id IN (SELECT id FROM lessons WHERE slug IN (
+    'ola-atena-6-8','primeira-conversa-6-8','contando-historias-6-8',
+    'aprendendo-brincando-6-8','sendo-educado-6-8','seguranca-primeiro-6-8'
+));
+
 INSERT INTO prompt_templates (lesson_id, label, template, age_band, order_index)
 SELECT
     l.id,
@@ -162,9 +216,25 @@ SELECT
     '6-8',
     0
 FROM lessons l
-WHERE l.age_band = '6-8';
+WHERE l.age_band = '6-8'
+  AND l.slug IN (
+    'ola-atena-6-8','primeira-conversa-6-8','contando-historias-6-8',
+    'aprendendo-brincando-6-8','sendo-educado-6-8','seguranca-primeiro-6-8'
+);
 
--- Prompt templates para faixa 9-12 (com slots editáveis)
+-- =========================================================
+-- 6) Prompt templates - faixa 9-12 (com slots editaveis em JSONB)
+--    FIX preventivo: cast (...)::jsonb tambem aqui na coluna `slots`,
+--    embora a 002 original ja inserisse texto que era coercido. Mantemos
+--    o cast explicito por seguranca.
+-- =========================================================
+DELETE FROM prompt_templates
+WHERE age_band = '9-12'
+  AND lesson_id IN (SELECT id FROM lessons WHERE slug IN (
+    'como-ia-funciona-9-12','prompts-inteligentes-9-12','criatividade-com-ia-9-12',
+    'pesquisa-responsavel-9-12','colaboracao-humano-ia-9-12','etica-e-ia-9-12'
+));
+
 INSERT INTO prompt_templates (lesson_id, label, template, slots, age_band, order_index)
 SELECT
     l.id,
@@ -184,17 +254,31 @@ SELECT
         WHEN l.slug = 'colaboracao-humano-ia-9-12' THEN 'Como a IA pode ajudar profissionais da área de {{area}}?'
         WHEN l.slug = 'etica-e-ia-9-12' THEN 'Qual sua opinião sobre o uso ético de IA na situação: {{situacao}}?'
     END,
-    CASE
-        WHEN l.slug = 'como-ia-funciona-9-12' THEN '[{"name": "conceito", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
-        WHEN l.slug = 'prompts-inteligentes-9-12' THEN '[{"name": "tema", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
-        WHEN l.slug = 'criatividade-com-ia-9-12' THEN '[{"name": "tipo_obra", "max_length": 20, "allowed_chars": "^[A-Za-zÀ-ÿ ]+$"}, {"name": "assunto", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
-        WHEN l.slug = 'pesquisa-responsavel-9-12' THEN '[{"name": "topico", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
-        WHEN l.slug = 'colaboracao-humano-ia-9-12' THEN '[{"name": "area", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
-        WHEN l.slug = 'etica-e-ia-9-12' THEN '[{"name": "situacao", "max_length": 50, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 .,!?]+$"}]'
-    END,
+    (CASE l.slug
+        WHEN 'como-ia-funciona-9-12' THEN '[{"name": "conceito", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
+        WHEN 'prompts-inteligentes-9-12' THEN '[{"name": "tema", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
+        WHEN 'criatividade-com-ia-9-12' THEN '[{"name": "tipo_obra", "max_length": 20, "allowed_chars": "^[A-Za-zÀ-ÿ ]+$"}, {"name": "assunto", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
+        WHEN 'pesquisa-responsavel-9-12' THEN '[{"name": "topico", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
+        WHEN 'colaboracao-humano-ia-9-12' THEN '[{"name": "area", "max_length": 30, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 ]+$"}]'
+        WHEN 'etica-e-ia-9-12' THEN '[{"name": "situacao", "max_length": 50, "allowed_chars": "^[A-Za-zÀ-ÿ0-9 .,!?]+$"}]'
+    END)::jsonb,
     '9-12',
     0
 FROM lessons l
-WHERE l.age_band = '9-12';
+WHERE l.age_band = '9-12'
+  AND l.slug IN (
+    'como-ia-funciona-9-12','prompts-inteligentes-9-12','criatividade-com-ia-9-12',
+    'pesquisa-responsavel-9-12','colaboracao-humano-ia-9-12','etica-e-ia-9-12'
+);
 
 COMMIT;
+
+-- =========================================================
+-- Verificacao final - rode estas queries depois do COMMIT
+-- para confirmar que tudo foi inserido:
+--
+--   SELECT COUNT(*) FROM badges;          -- esperado: 12
+--   SELECT COUNT(*) FROM lessons;         -- esperado: 12
+--   SELECT COUNT(*) FROM challenges;      -- esperado: 12
+--   SELECT COUNT(*) FROM prompt_templates;-- esperado: 12 (6 da faixa 6-8 + 6 da 9-12)
+-- =========================================================

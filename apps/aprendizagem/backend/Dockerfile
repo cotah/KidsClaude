@@ -27,9 +27,11 @@ RUN pip install -e .
 # === Stage final ===
 FROM python:3.11-slim
 
-# Instala apenas dependências runtime
+# Instala dependencias runtime (curl para healthcheck do Docker;
+# postgresql-client expoe o psql usado pelo run_migrations.sh no startup).
 RUN apt-get update && apt-get install -y \
     curl \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Cria usuário não-root
@@ -44,6 +46,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copia código da aplicação (testes ficam fora da imagem de producao)
 COPY app/ ./app/
+
+# Script de bootstrap de migrations - rodado pelo startCommand antes do uvicorn.
+COPY run_migrations.sh ./
+RUN chmod +x run_migrations.sh
 
 # Configuração de ambiente
 ENV PYTHONUNBUFFERED=1
