@@ -1,8 +1,10 @@
 """
-Cliente do banco de dados Supabase.
-Configura conexão com Postgres via supabase-py e asyncpg.
+Cliente do banco de dados.
+- Pool asyncpg conectado direto via DATABASE_URL (injetado pelo Railway).
+- Cliente Supabase ainda usado para Auth (Supabase Auth para os pais).
 """
 
+import os
 import asyncpg
 from typing import AsyncGenerator
 from supabase import create_client, Client
@@ -22,34 +24,22 @@ class DatabaseClient:
         self._pool: asyncpg.Pool | None = None
 
     async def init_pool(self):
-        """Inicializa connection pool AsyncPG."""
+        """Inicializa connection pool AsyncPG usando DATABASE_URL bruto."""
         if self._pool is None:
-            # Extrai dados de conexão da URL do Supabase
-            db_url = settings.supabase_url.replace("https://", "")
-            project_ref = db_url.split(".")[0]
+            database_url = os.environ.get("DATABASE_URL")
+            if not database_url:
+                raise RuntimeError(
+                    "DATABASE_URL environment variable is not set. "
+                    "Railway injects this automatically when a Postgres plugin is attached."
+                )
 
-            # Constrói string de conexão PostgreSQL
-            postgres_url = (
-                f"postgresql://postgres.{project_ref}:"
-                f"{settings.supabase_service_role_key}@"
-                f"aws-0-{settings.supabase_url.split('//')[1].split('.')[0]}.pooler.supabase.com:6543/postgres"
+            # Usa a URL exatamente como vem do Railway, sem reconstrucao.
+            self._pool = await asyncpg.create_pool(
+                database_url,
+                min_size=2,
+                max_size=10,
+                command_timeout=30,
             )
-
-            try:
-                self._pool = await asyncpg.create_pool(
-                    postgres_url,
-                    min_size=2,
-                    max_size=10,
-                    command_timeout=30
-                )
-            except Exception:
-                # Fallback: usa URL direta sem pooler
-                postgres_direct = (
-                    f"postgresql://postgres:"
-                    f"{settings.supabase_service_role_key}@"
-                    f"db.{project_ref}.supabase.co:5432/postgres"
-                )
-                self._pool = await asyncpg.create_pool(postgres_direct, min_size=1, max_size=5)
 
     async def close_pool(self):
         """Fecha connection pool."""
