@@ -15,10 +15,10 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python311", "gcc"]
+nixPkgs = ["python311", "python311Packages.pip", "gcc"]
 
 [phases.install]
 cmds = [
-  "python -m pip install --upgrade pip",
-  "pip install -r apps/aprendizagem/backend/requirements.txt"
+  "pip3 install --upgrade pip",
+  "pip3 install -r apps/aprendizagem/backend/requirements.txt"
 ]
