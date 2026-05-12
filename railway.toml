@@ -1,0 +1,30 @@
+# Railway monorepo config - aponta para o backend FastAPI em apps/aprendizagem/backend.
+#
+# Por que esse arquivo existe na raiz:
+#   Railway usa esta config (a partir do root do repo conectado) para descobrir
+#   COMO construir e iniciar o servico quando o "Root Directory" do servico
+#   ainda nao foi definido manualmente no dashboard. Sem esse arquivo, o build
+#   falha com "cannot find root directory" porque nao ha codigo runnable na
+#   raiz do repo (apps Next.js e FastAPI vivem em subpastas).
+#
+# Como funciona:
+#   - nixpacksConfigPath: aponta para o nixpacks.toml dentro da subdir do
+#     backend. O Nixpacks le aquele arquivo para definir as fases de build.
+#     O contexto de build continua sendo o root do repo - por isso o caminho
+#     do requirements.txt dentro do nixpacks.toml e relativo ao root.
+#   - startCommand: entra na subdir antes de subir o uvicorn. O $PORT e' uma
+#     variavel injetada pelo Railway na hora de rodar.
+#   - healthcheckPath: o endpoint /v1/health do FastAPI confirma que a API
+#     subiu. Railway repete a checagem ate o timeout antes de marcar deploy
+#     como vivo e direcionar trafego.
+
+[build]
+builder = "NIXPACKS"
+nixpacksConfigPath = "apps/aprendizagem/backend/nixpacks.toml"
+
+[deploy]
+startCommand = "cd apps/aprendizagem/backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/v1/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

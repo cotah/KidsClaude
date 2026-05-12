@@ -1,0 +1,24 @@
+# Nixpacks build config para o backend FastAPI.
+#
+# Contexto de build: este arquivo e' referenciado pelo /railway.toml na raiz
+# do repo via "nixpacksConfigPath". O CWD durante o build continua sendo o
+# root do repo (nao a subdir), entao os caminhos abaixo sao relativos ao root.
+#
+# Fases:
+#   setup   - declara os pacotes Nix necessarios no ambiente de build.
+#             python311 + gcc cobrem instalacao de wheels nativos (asyncpg,
+#             bcrypt, etc.) e dependencias C-bindings comuns no requirements.
+#   install - instala dependencias Python. O pip apontamento explicito para o
+#             requirements.txt da subdir e o que faz o build funcionar sem
+#             precisar mudar o Root Directory do servico no dashboard.
+
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["python311", "gcc"]
+
+[phases.install]
+cmds = [
+  "python -m pip install --upgrade pip",
+  "pip install -r apps/aprendizagem/backend/requirements.txt"
+]
