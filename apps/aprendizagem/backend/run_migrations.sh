@@ -7,7 +7,7 @@ TABLE_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM informat
 
 if [ "$TABLE_EXISTS" = "f" ]; then
     echo "[migrate] running 001_initial_schema.sql..."
-    psql "$DATABASE_URL" -f app/db/migrations/001_initial_schema.sql
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/001_initial_schema.sql
     echo "[migrate] 001 done"
 else
     echo "[migrate] 001 already applied, skipping"
@@ -21,8 +21,14 @@ fi
 LESSONS_COUNT=$(psql "$DATABASE_URL" -t -c "SELECT COUNT(*) FROM lessons;" 2>/dev/null | tr -d ' \n')
 
 if [ -z "$LESSONS_COUNT" ] || [ "$LESSONS_COUNT" = "0" ]; then
+    # Reset preventivo de qualquer transacao aberta. Cada psql -c abre uma
+    # conexao nova, mas com poolers em transaction-mode pode haver estado
+    # residual; este ROLLBACK e' inofensivo (no-op se nada estiver pendente).
+    echo "[migrate] clearing any aborted transaction state before 002..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
     echo "[migrate] running 002_seed_data.sql..."
-    psql "$DATABASE_URL" -f app/db/migrations/002_seed_data.sql
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/002_seed_data.sql
     echo "[migrate] 002 done"
 else
     echo "[migrate] 002 already applied (lessons=$LESSONS_COUNT), skipping"
