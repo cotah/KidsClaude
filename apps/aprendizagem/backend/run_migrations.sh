@@ -8,10 +8,10 @@
 # Idempotencia:
 #   - 001 (schema): so roda se a tabela `parents` ainda nao existir. A 001
 #     tem CREATE TABLE sem IF NOT EXISTS, entao a segunda passada estouraria.
-#   - 002 (seed): so roda se a tabela `challenges` estiver vazia. A 002 usa
-#     DELETE+INSERT internamente, o que quebra com challenge_attempts ja
-#     existentes (FK rigida em challenge_id). Esse gate garante que a 002
-#     so corre na primeira inicializacao.
+#   - 002 (seed): so roda se a tabela `lessons` estiver vazia. Usar lessons
+#     como gate evita falha quando a tabela challenges nao existe ainda (por
+#     exemplo, schema parcial de um deploy anterior). lessons tambem e'
+#     criada na 001 e populada na 002, entao funciona como sentinela.
 
 set -euo pipefail
 
@@ -35,13 +35,13 @@ else
 fi
 
 # --- 002_seed_data.sql --------------------------------------------------
-CHALLENGES_COUNT=$(psql "$DATABASE_URL" -tAc "SELECT COUNT(*) FROM challenges;")
+LESSONS_COUNT=$(psql "$DATABASE_URL" -tAc "SELECT COUNT(*) FROM lessons;")
 
-if [[ "$CHALLENGES_COUNT" == "0" ]]; then
+if [[ "$LESSONS_COUNT" == "0" ]]; then
   echo "[migrate] aplicando 002_seed_data.sql"
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIGRATIONS_DIR/002_seed_data.sql"
 else
-  echo "[migrate] seed ja aplicada (${CHALLENGES_COUNT} desafios), pulando 002"
+  echo "[migrate] seed ja aplicada (${LESSONS_COUNT} licoes), pulando 002"
 fi
 
 echo "[migrate] OK"
