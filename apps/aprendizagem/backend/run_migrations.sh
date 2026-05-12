@@ -3,7 +3,10 @@ set -e
 
 echo "[migrate] checking database..."
 
-TABLE_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='parents');" | tr -d ' \n')
+# Gate na ULTIMA tabela criada pela 001 (child_safety_events). Se ela
+# existir, sabemos que a 001 rodou ate o fim. Gatear na primeira tabela
+# (parents) deixa passar runs parciais como "completas".
+TABLE_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='child_safety_events');" | tr -d ' \n')
 
 if [ "$TABLE_EXISTS" = "f" ]; then
     echo "[migrate] running 001_initial_schema.sql..."

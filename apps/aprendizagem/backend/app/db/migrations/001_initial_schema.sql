@@ -5,7 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Tabela parents (sincronizada com auth.users do Supabase)
-CREATE TABLE parents (
+CREATE TABLE IF NOT EXISTSparents (
     id UUID PRIMARY KEY, -- será igual a auth.users.id
     email TEXT UNIQUE NOT NULL,
     display_name TEXT,
@@ -32,7 +32,7 @@ CREATE TRIGGER trigger_parents_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Tabela children
-CREATE TABLE children (
+CREATE TABLE IF NOT EXISTSchildren (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
     name TEXT NOT NULL CHECK (LENGTH(name) >= 1 AND LENGTH(name) <= 30),
@@ -60,7 +60,7 @@ CREATE TRIGGER trigger_children_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Tabela lessons
-CREATE TABLE lessons (
+CREATE TABLE IF NOT EXISTSlessons (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     slug TEXT UNIQUE NOT NULL,
     title TEXT NOT NULL,
@@ -87,7 +87,7 @@ CREATE TRIGGER trigger_lessons_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Tabela lesson_progress
-CREATE TABLE lesson_progress (
+CREATE TABLE IF NOT EXISTSlesson_progress (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     lesson_id UUID NOT NULL REFERENCES lessons(id),
@@ -115,7 +115,7 @@ CREATE TRIGGER trigger_lesson_progress_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Tabela challenges
-CREATE TABLE challenges (
+CREATE TABLE IF NOT EXISTSchallenges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
     kind TEXT NOT NULL CHECK (kind IN ('multiple_choice', 'fill_prompt')),
@@ -129,7 +129,7 @@ ALTER TABLE challenges ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "challenges_read_authenticated" ON challenges FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Tabela challenge_attempts
-CREATE TABLE challenge_attempts (
+CREATE TABLE IF NOT EXISTSchallenge_attempts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     challenge_id UUID NOT NULL REFERENCES challenges(id),
@@ -149,7 +149,7 @@ USING (
 );
 
 -- Tabela prompt_templates
-CREATE TABLE prompt_templates (
+CREATE TABLE IF NOT EXISTSprompt_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     lesson_id UUID NOT NULL REFERENCES lessons(id),
     label TEXT NOT NULL, -- texto do botão
@@ -164,7 +164,7 @@ ALTER TABLE prompt_templates ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "prompt_templates_read_authenticated" ON prompt_templates FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Tabela chat_sessions
-CREATE TABLE chat_sessions (
+CREATE TABLE IF NOT EXISTSchat_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     lesson_id UUID NOT NULL REFERENCES lessons(id),
@@ -186,7 +186,7 @@ USING (
 );
 
 -- Tabela chat_messages
-CREATE TABLE chat_messages (
+CREATE TABLE IF NOT EXISTSchat_messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     session_id UUID NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK (role IN ('child', 'assistant', 'system')),
@@ -211,7 +211,7 @@ USING (
 );
 
 -- Tabela badges
-CREATE TABLE badges (
+CREATE TABLE IF NOT EXISTSbadges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     code TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
@@ -225,7 +225,7 @@ ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "badges_read_authenticated" ON badges FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Tabela child_badges
-CREATE TABLE child_badges (
+CREATE TABLE IF NOT EXISTSchild_badges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     badge_id UUID NOT NULL REFERENCES badges(id),
@@ -241,7 +241,7 @@ USING (
 );
 
 -- Tabela daily_usage
-CREATE TABLE daily_usage (
+CREATE TABLE IF NOT EXISTSdaily_usage (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     usage_date DATE NOT NULL,
@@ -266,7 +266,7 @@ CREATE TRIGGER trigger_daily_usage_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Tabela child_safety_events
-CREATE TABLE child_safety_events (
+CREATE TABLE IF NOT EXISTSchild_safety_events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
     session_id UUID REFERENCES chat_sessions(id), -- nullable
