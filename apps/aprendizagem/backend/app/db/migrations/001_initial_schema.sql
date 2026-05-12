@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS parents (
 
 -- RLS para parents: só pode acessar próprios dados
 ALTER TABLE parents ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "parents_self_access" ON parents FOR ALL USING (id = auth.uid());
 
 -- Trigger para updated_at automático
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -52,7 +51,6 @@ CREATE INDEX idx_children_parent ON children(parent_id);
 
 -- RLS para children: parent vê apenas próprios filhos
 ALTER TABLE children ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "children_parent_access" ON children FOR ALL USING (parent_id = auth.uid());
 
 CREATE TRIGGER trigger_children_updated_at
     BEFORE UPDATE ON children
@@ -79,7 +77,6 @@ CREATE INDEX idx_lessons_age_active ON lessons(age_band, is_active, order_index)
 
 -- RLS para lessons: leitura pública (autenticado), escrita só service role
 ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "lessons_read_authenticated" ON lessons FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE TRIGGER trigger_lessons_updated_at
     BEFORE UPDATE ON lessons
@@ -104,10 +101,6 @@ CREATE INDEX idx_progress_child ON lesson_progress(child_id);
 
 -- RLS para lesson_progress: parent vê progresso dos próprios filhos
 ALTER TABLE lesson_progress ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "progress_parent_access" ON lesson_progress FOR ALL
-USING (
-    child_id IN (SELECT id FROM children WHERE parent_id = auth.uid())
-);
 
 CREATE TRIGGER trigger_lesson_progress_updated_at
     BEFORE UPDATE ON lesson_progress
@@ -126,7 +119,6 @@ CREATE TABLE IF NOT EXISTS challenges (
 
 -- RLS para challenges: leitura pública
 ALTER TABLE challenges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "challenges_read_authenticated" ON challenges FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Tabela challenge_attempts
 CREATE TABLE IF NOT EXISTS challenge_attempts (
@@ -143,10 +135,6 @@ CREATE INDEX idx_attempts_child_chal ON challenge_attempts(child_id, challenge_i
 
 -- RLS para challenge_attempts
 ALTER TABLE challenge_attempts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "attempts_parent_access" ON challenge_attempts FOR ALL
-USING (
-    child_id IN (SELECT id FROM children WHERE parent_id = auth.uid())
-);
 
 -- Tabela prompt_templates
 CREATE TABLE IF NOT EXISTS prompt_templates (
@@ -161,7 +149,6 @@ CREATE TABLE IF NOT EXISTS prompt_templates (
 
 -- RLS para prompt_templates: leitura pública
 ALTER TABLE prompt_templates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "prompt_templates_read_authenticated" ON prompt_templates FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Tabela chat_sessions
 CREATE TABLE IF NOT EXISTS chat_sessions (
@@ -180,10 +167,6 @@ CREATE INDEX idx_sessions_child ON chat_sessions(child_id, started_at DESC);
 
 -- RLS para chat_sessions
 ALTER TABLE chat_sessions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "sessions_parent_access" ON chat_sessions FOR ALL
-USING (
-    child_id IN (SELECT id FROM children WHERE parent_id = auth.uid())
-);
 
 -- Tabela chat_messages
 CREATE TABLE IF NOT EXISTS chat_messages (
@@ -202,13 +185,6 @@ CREATE INDEX idx_messages_session ON chat_messages(session_id, created_at);
 
 -- RLS para chat_messages
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "messages_parent_access" ON chat_messages FOR ALL
-USING (
-    session_id IN (
-        SELECT id FROM chat_sessions
-        WHERE child_id IN (SELECT id FROM children WHERE parent_id = auth.uid())
-    )
-);
 
 -- Tabela badges
 CREATE TABLE IF NOT EXISTS badges (
@@ -222,7 +198,6 @@ CREATE TABLE IF NOT EXISTS badges (
 
 -- RLS para badges: leitura pública
 ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "badges_read_authenticated" ON badges FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Tabela child_badges
 CREATE TABLE IF NOT EXISTS child_badges (
@@ -235,10 +210,6 @@ CREATE TABLE IF NOT EXISTS child_badges (
 
 -- RLS para child_badges
 ALTER TABLE child_badges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "child_badges_parent_access" ON child_badges FOR ALL
-USING (
-    child_id IN (SELECT id FROM children WHERE parent_id = auth.uid())
-);
 
 -- Tabela daily_usage
 CREATE TABLE IF NOT EXISTS daily_usage (
@@ -255,10 +226,6 @@ CREATE INDEX idx_usage_child_date ON daily_usage(child_id, usage_date DESC);
 
 -- RLS para daily_usage
 ALTER TABLE daily_usage ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "daily_usage_parent_access" ON daily_usage FOR ALL
-USING (
-    child_id IN (SELECT id FROM children WHERE parent_id = auth.uid())
-);
 
 CREATE TRIGGER trigger_daily_usage_updated_at
     BEFORE UPDATE ON daily_usage
@@ -279,9 +246,5 @@ CREATE INDEX idx_safety_child_date ON child_safety_events(child_id, created_at D
 
 -- RLS para child_safety_events
 ALTER TABLE child_safety_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "safety_events_parent_access" ON child_safety_events FOR ALL
-USING (
-    child_id IN (SELECT id FROM children WHERE parent_id = auth.uid())
-);
 
 COMMIT;
