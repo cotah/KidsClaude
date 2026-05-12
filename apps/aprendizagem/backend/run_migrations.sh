@@ -24,10 +24,11 @@ fi
 MIGRATIONS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/app/db/migrations"
 
 # --- 001_initial_schema.sql ---------------------------------------------
-PARENTS_EXISTS=$(psql "$DATABASE_URL" -tAc \
-  "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='parents');")
-
-if [[ "$PARENTS_EXISTS" == "f" ]]; then
+# Check via psql \dt: lista a tabela quando ela existe.
+# Grep com regex casa SO a linha do formato "public | parents | ...";
+# a mensagem de erro "Did not find any relation named 'parents'." tambem
+# contem a palavra parents, entao um grep solto daria falso positivo.
+if ! psql "$DATABASE_URL" -c "\dt parents" 2>&1 | grep -qE '^[[:space:]]*public[[:space:]]*\|[[:space:]]*parents[[:space:]]*\|'; then
   echo "[migrate] aplicando 001_initial_schema.sql"
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIGRATIONS_DIR/001_initial_schema.sql"
 else
