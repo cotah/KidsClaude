@@ -1,0 +1,142 @@
+# Blocklist de termos proibidos para crianças
+# Português e Inglês - atualizada periodicamente
+# Format: um termo por linha, case-insensitive
+
+# Violência explícita
+matar
+morrer
+sangue
+arma
+pistola
+revolver
+faca
+espada
+bomba
+guerra
+violência
+briga
+soco
+chute
+machucar
+doer
+estupro
+assassinato
+homicídio
+
+# Sexo/conteúdo adulto
+sexo
+transar
+fazer amor
+penis
+vagina
+seios
+peitos
+bunda
+nádegas
+íntimo
+privada
+nua
+nu
+pelado
+strip
+pornografia
+masturbar
+orgasmo
+ejacular
+
+# Drogas e substâncias
+droga
+maconha
+cocaína
+crack
+heroína
+álcool
+bebida
+cigarro
+fumar
+vício
+overdose
+
+# Suicídio e autolesão
+suicídio
+suicidar
+matar-se
+enforcar
+veneno
+cortar
+corte
+sangrar
+autolesão
+depressão
+tristeza profunda
+
+# Discurso de ódio
+ódio
+racismo
+homofobia
+xenofobia
+preconceito
+discriminação
+nazismo
+hitler
+
+# PII - informações pessoais (padrões)
+cpf
+rg
+telefone
+celular
+endereço
+rua
+avenida
+cidade
+bairro
+cep
+escola
+colégio
+email
+@
+
+# Inglês
+kill
+die
+blood
+gun
+weapon
+knife
+sword
+bomb
+war
+violence
+fight
+punch
+kick
+hurt
+pain
+rape
+murder
+sex
+fuck
+dick
+pussy
+breast
+ass
+naked
+nude
+porn
+masturbate
+orgasm
+drug
+marijuana
+cocaine
+alcohol
+cigarette
+smoke
+suicide
+kill yourself
+hang
+poison
+cut
+bleed
+hate
+racism
+nazi

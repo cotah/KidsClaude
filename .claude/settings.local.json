@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(python -m pytest tests/test_security.py::TestPINSecurity::test_pin_hashing_verification -v)",
+      "Bash(python -c \"from app.core.security import hash_pin, verify_pin; print\\('Security functions work!'\\)\")",
+      "Bash(xargs wc -l)",
+      "Bash(python -m pytest --collect-only)",
+      "PowerShell(.\\\\setup.ps1)",
+      "PowerShell(powershell -NoProfile -Command \"try { [System.Management.Automation.Language.Parser]::ParseFile\\('.\\\\setup.ps1', [ref]$null, [ref]$null\\) | Out-Null; Write-Host 'Syntax OK' } catch { Write-Error $_ }\")",
+      "Bash(npx vitest *)",
+      "PowerShell(.\\\\setup_simple.ps1)",
+      "Bash(npx next *)",
+      "Bash(npx tsc *)",
+      "PowerShell(python -m pytest -q --tb=short)",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\Activate.ps1; python -m pytest -q --tb=short)",
+      "Bash(npx playwright *)",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\Activate.ps1; python -m pip install email-validator)",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\Activate.ps1; python -m pytest -q --tb=short --disable-warnings)",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\Activate.ps1; python -m pytest -v)",
+      "Bash(npm ls *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\henri\\\\autodev-os\\\\apps\\\\aprendizagem\\\\frontend\\\\app\\\\\" -Recurse -Filter \"page.tsx\" | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\henri\\\\autodev-os\\\\apps\\\\aprendizagem\\\\frontend\\\\\", \"\"\\) })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\henri\\\\autodev-os\\\\apps\\\\aprendizagem\\\\frontend\\\\app\\\\api\\\\\" -Recurse -Filter \"route.ts\" | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Test-Path *)",
+      "Bash(.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(echo \"EXIT: $?\")",
+      "mcp__claude_ai_Supabase__list_organizations",
+      "mcp__claude_ai_Supabase__list_projects"
+    ]
+  }
+}

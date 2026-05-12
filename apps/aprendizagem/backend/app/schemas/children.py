@@ -1,0 +1,94 @@
+"""
+Schemas para operações com crianças: CRUD, progresso, badges.
+"""
+
+from pydantic import BaseModel, Field, validator
+from typing import Optional, List
+from datetime import date, datetime
+
+
+class ChildCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=30)
+    age: int = Field(..., ge=6, le=12)
+    avatar_id: str = Field(..., min_length=1)
+    pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
+    daily_limit_minutes: Optional[int] = Field(30, ge=5, le=180)
+
+    @validator('name')
+    def validate_name(cls, v):
+        """Remove espaços extras e valida."""
+        return v.strip()
+
+
+class ChildUpdateRequest(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=30)
+    age: Optional[int] = Field(None, ge=6, le=12)
+    avatar_id: Optional[str] = None
+    pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
+    daily_limit_minutes: Optional[int] = Field(None, ge=5, le=180)
+
+    @validator('name')
+    def validate_name(cls, v):
+        """Remove espaços extras."""
+        return v.strip() if v else None
+
+
+class ChildResponse(BaseModel):
+    id: str
+    parent_id: str
+    name: str
+    age: int
+    avatar_id: str
+    daily_limit_minutes: int
+    level: int
+    xp: int
+    streak_days: int
+    last_active_date: Optional[date]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChildProgressEntry(BaseModel):
+    lesson_id: str
+    status: str  # 'not_started', 'in_progress', 'completed'
+    xp_earned: int
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+
+
+class ChildProgressResponse(BaseModel):
+    progress: List[ChildProgressEntry]
+
+
+class BadgeInfo(BaseModel):
+    id: str
+    code: str
+    name: str
+    description: str
+    icon: str
+    awarded_at: datetime
+
+
+class LessonCompleteResponse(BaseModel):
+    xp_total: int
+    level: int
+    badges_unlocked: List[BadgeInfo]
+
+
+class DashboardChildCard(BaseModel):
+    id: str
+    name: str
+    age: int
+    avatar_id: str
+    xp: int
+    level: int
+    streak_days: int
+    today_minutes: int
+    recent_badges: List[BadgeInfo]
+    alerts_count: int
+
+
+class ParentDashboardResponse(BaseModel):
+    children: List[DashboardChildCard]

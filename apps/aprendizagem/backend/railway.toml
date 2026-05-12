@@ -1,0 +1,42 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/v1/health"
+healthcheckTimeout = 30
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "aprendizagem-api"
+
+[services.variables]
+# Essas serão sobrescritas pelas env vars do Railway dashboard
+ENV = "production"
+LOG_LEVEL = "info"
+API_BASE_URL = "${{ API_BASE_URL }}"
+FRONTEND_ORIGIN = "${{ FRONTEND_ORIGIN }}"
+
+# Configurações de produção
+MODERATION_STRICT = "true"
+RATE_LIMIT_PER_MIN = "60"
+MAX_MESSAGES_PER_SESSION = "30"
+MAX_MESSAGES_PER_CHILD_PER_DAY = "100"
+TIMEZONE = "America/Sao_Paulo"
+CHILD_JWT_TTL_HOURS = "4"
+PARENT_JWT_TTL_DAYS = "7"
+
+# Paths
+BLOCKLIST_PATH = "app/safety/blocklist.txt"
+
+# Railway vai injetar automaticamente:
+# - PORT (para uvicorn)
+# - RAILWAY_ENVIRONMENT
+# Configurar manualmente no dashboard:
+# - SUPABASE_URL
+# - SUPABASE_SERVICE_ROLE_KEY
+# - SUPABASE_JWT_SECRET
+# - ANTHROPIC_API_KEY
+# - CHILD_JWT_SECRET
+# - SENTRY_DSN (opcional)

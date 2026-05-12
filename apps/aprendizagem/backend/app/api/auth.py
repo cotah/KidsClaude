@@ -1,0 +1,272 @@
+"""
+Rotas de autenticação: signup/login de pais, login de crianças.
+Integração com Supabase Auth para pais e JWT próprio para crianças.
+"""
+
+import structlog
+from fastapi import APIRouter, HTTPException, status, Depends
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+
+from app.schemas.auth import (
+    ParentSignupRequest, ParentSignupResponse,
+    ParentLoginRequest, ParentLoginResponse,
+    PasswordResetRequest, PasswordResetConfirm,
+    ParentInfo, ChildLoginRequest, ChildLoginResponse,
+    ApiResponse
+)
+from app.schemas.common import ErrorResponse
+from app.core.dependencies import ParentAuth, DBClient
+from app.core.security import hash_pin, verify_pin, create_child_jwt
+from app.db.client import supabase
+
+logger = structlog.get_logger()
+router = APIRouter()
+
+# Rate limiter específico para auth
+limiter = Limiter(key_func=get_remote_address)
+
+
+@router.post("/parent/signup", response_model=ParentSignupResponse, status_code=201)
+@limiter.limit("5/minute")
+async def parent_signup(request: ParentSignupRequest, db: DBClient):
+    """
+    Cria conta de pai via Supabase Auth.
+    Registra também na tabela parents para metadados.
+    """
+    try:
+        # Tenta criar usuário no Supabase
+        auth_response = supabase.auth.sign_up({
+            "email": request.email,
+            "password": request.password
+        })
+
+        if auth_response.user is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": {"code": "EMAIL_EXISTS", "message": "Email já cadastrado"}}
+            )
+
+        user_id = auth_response.user.id
+
+        # Insere na tabela parents
+        await db.execute_non_query(
+            "INSERT INTO parents (id, email, display_name) VALUES ($1, $2, $3)",
+            user_id, request.email, request.display_name
+        )
+
+        logger.info("Pai cadastrado", user_id=user_id, email=request.email)
+
+        return ParentSignupResponse(
+            parent_id=user_id,
+            access_token=auth_response.session.access_token
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro no signup", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {"code": "SIGNUP_ERROR", "message": "Erro interno"}}
+        )
+
+
+@router.post("/parent/login", response_model=ParentLoginResponse)
+@limiter.limit("5/minute")
+async def parent_login(request: ParentLoginRequest):
+    """
+    Autentica pai via Supabase Auth.
+    Rate limit contra ataques de força bruta.
+    """
+    try:
+        auth_response = supabase.auth.sign_in_with_password({
+            "email": request.email,
+            "password": request.password
+        })
+
+        if auth_response.user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Email ou senha incorretos"}}
+            )
+
+        logger.info("Login pai", user_id=auth_response.user.id)
+
+        return ParentLoginResponse(
+            access_token=auth_response.session.access_token,
+            expires_in=auth_response.session.expires_in or 604800  # 7 dias default
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro no login", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Email ou senha incorretos"}}
+        )
+
+
+@router.post("/parent/logout", status_code=204)
+async def parent_logout(auth: ParentAuth):
+    """
+    Logout do pai (invalida token no Supabase).
+    """
+    try:
+        supabase.auth.sign_out()
+        logger.info("Logout pai", user_id=auth.user_id)
+        return {"ok": True}
+
+    except Exception as e:
+        logger.error("Erro no logout", error=str(e))
+        # Não falha - logout deve sempre funcionar
+        return {"ok": True}
+
+
+@router.post("/parent/password-reset/request", response_model=ApiResponse)
+@limiter.limit("3/minute")
+async def password_reset_request(request: PasswordResetRequest):
+    """
+    Solicita reset de senha via email.
+    Sempre retorna 200 para não vazar informação de emails cadastrados.
+    """
+    try:
+        supabase.auth.reset_password_email(request.email)
+        logger.info("Reset solicitado", email=request.email)
+
+    except Exception as e:
+        logger.warning("Erro no reset request", email=request.email, error=str(e))
+        # Não propaga erro por segurança
+
+    return {"ok": True}
+
+
+@router.post("/parent/password-reset/confirm", response_model=ApiResponse)
+async def password_reset_confirm(request: PasswordResetConfirm):
+    """
+    Confirma reset de senha com token recebido por email.
+    """
+    try:
+        # Supabase confirma via token
+        auth_response = supabase.auth.verify_otp({
+            "token": request.token,
+            "type": "recovery",
+            "password": request.new_password
+        })
+
+        if not auth_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "INVALID_TOKEN", "message": "Token inválido ou expirado"}}
+            )
+
+        logger.info("Password reset confirmado", user_id=auth_response.user.id)
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro no reset confirm", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_TOKEN", "message": "Token inválido ou expirado"}}
+        )
+
+
+@router.get("/parent/me", response_model=ParentInfo)
+async def get_parent_info(auth: ParentAuth, db: DBClient):
+    """
+    Retorna informações do pai autenticado.
+    """
+    try:
+        parent_data = await db.execute_query(
+            "SELECT id, email, display_name FROM parents WHERE id = $1",
+            auth.user_id
+        )
+
+        if not parent_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": {"code": "NOT_FOUND", "message": "Pai não encontrado"}}
+            )
+
+        parent = parent_data[0]
+        return ParentInfo(
+            id=parent['id'],
+            email=parent['email'],
+            display_name=parent['display_name']
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro ao buscar pai", error=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.post("/child/login", response_model=ChildLoginResponse)
+@limiter.limit("10/minute")
+async def child_login(request: ChildLoginRequest, auth: ParentAuth, db: DBClient):
+    """
+    Autentica criança via PIN e emite JWT próprio.
+    Pai deve estar logado para autorizar login da criança.
+    """
+    try:
+        # Verifica se criança pertence ao pai
+        child_data = await db.execute_query(
+            "SELECT id, parent_id, name, age, avatar_id, pin_hash FROM children WHERE id = $1",
+            request.child_id
+        )
+
+        if not child_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": {"code": "NOT_FOUND", "message": "Criança não encontrada"}}
+            )
+
+        child = child_data[0]
+
+        # Verifica propriedade (pai é o dono da criança)
+        if child['parent_id'] != auth.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error": {"code": "FORBIDDEN", "message": "Acesso negado"}}
+            )
+
+        # Verifica PIN se configurado
+        if child['pin_hash']:
+            if not request.pin:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={"error": {"code": "PIN_REQUIRED", "message": "PIN obrigatório"}}
+                )
+
+            if not verify_pin(request.pin, child['pin_hash']):
+                # TODO: implementar bloqueio após 3 tentativas erradas
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={"error": {"code": "INVALID_PIN", "message": "PIN incorreto"}}
+                )
+
+        # Cria JWT da criança
+        child_token = create_child_jwt(child['id'], auth.user_id)
+
+        logger.info("Login criança", child_id=child['id'], parent_id=auth.user_id)
+
+        return ChildLoginResponse(
+            access_token=child_token,
+            expires_in=14400,  # 4 horas em segundos
+            child={
+                "id": child['id'],
+                "name": child['name'],
+                "age": child['age'],
+                "avatar_id": child['avatar_id']
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro no login criança", error=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
