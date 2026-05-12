@@ -4,7 +4,7 @@ Integração com Supabase Auth para pais e JWT próprio para crianças.
 """
 
 import structlog
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Request, status, Depends
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 
@@ -29,16 +29,19 @@ limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/parent/signup", response_model=ParentSignupResponse, status_code=201)
 @limiter.limit("5/minute")
-async def parent_signup(request: ParentSignupRequest, db: DBClient):
+async def parent_signup(request: Request, payload: ParentSignupRequest, db: DBClient):
     """
     Cria conta de pai via Supabase Auth.
     Registra também na tabela parents para metadados.
+
+    Nota: o parametro `request: Request` (Starlette) e' obrigatorio para o
+    SlowAPI extrair o IP do cliente; o body do request vai em `payload`.
     """
     try:
         # Tenta criar usuário no Supabase
         auth_response = supabase.auth.sign_up({
-            "email": request.email,
-            "password": request.password
+            "email": payload.email,
+            "password": payload.password
         })
 
         if auth_response.user is None:
@@ -52,10 +55,10 @@ async def parent_signup(request: ParentSignupRequest, db: DBClient):
         # Insere na tabela parents
         await db.execute_non_query(
             "INSERT INTO parents (id, email, display_name) VALUES ($1, $2, $3)",
-            user_id, request.email, request.display_name
+            user_id, payload.email, payload.display_name
         )
 
-        logger.info("Pai cadastrado", user_id=user_id, email=request.email)
+        logger.info("Pai cadastrado", user_id=user_id, email=payload.email)
 
         return ParentSignupResponse(
             parent_id=user_id,
@@ -74,15 +77,17 @@ async def parent_signup(request: ParentSignupRequest, db: DBClient):
 
 @router.post("/parent/login", response_model=ParentLoginResponse)
 @limiter.limit("5/minute")
-async def parent_login(request: ParentLoginRequest):
+async def parent_login(request: Request, payload: ParentLoginRequest):
     """
     Autentica pai via Supabase Auth.
     Rate limit contra ataques de força bruta.
+
+    `request: Request` (Starlette) e' exigido pelo SlowAPI; o body fica em `payload`.
     """
     try:
         auth_response = supabase.auth.sign_in_with_password({
-            "email": request.email,
-            "password": request.password
+            "email": payload.email,
+            "password": payload.password
         })
 
         if auth_response.user is None:
@@ -126,17 +131,19 @@ async def parent_logout(auth: ParentAuth):
 
 @router.post("/parent/password-reset/request", response_model=ApiResponse)
 @limiter.limit("3/minute")
-async def password_reset_request(request: PasswordResetRequest):
+async def password_reset_request(request: Request, payload: PasswordResetRequest):
     """
     Solicita reset de senha via email.
     Sempre retorna 200 para não vazar informação de emails cadastrados.
+
+    `request: Request` (Starlette) e' exigido pelo SlowAPI; o body fica em `payload`.
     """
     try:
-        supabase.auth.reset_password_email(request.email)
-        logger.info("Reset solicitado", email=request.email)
+        supabase.auth.reset_password_email(payload.email)
+        logger.info("Reset solicitado", email=payload.email)
 
     except Exception as e:
-        logger.warning("Erro no reset request", email=request.email, error=str(e))
+        logger.warning("Erro no reset request", email=payload.email, error=str(e))
         # Não propaga erro por segurança
 
     return {"ok": True}
@@ -207,16 +214,18 @@ async def get_parent_info(auth: ParentAuth, db: DBClient):
 
 @router.post("/child/login", response_model=ChildLoginResponse)
 @limiter.limit("10/minute")
-async def child_login(request: ChildLoginRequest, auth: ParentAuth, db: DBClient):
+async def child_login(request: Request, payload: ChildLoginRequest, auth: ParentAuth, db: DBClient):
     """
     Autentica criança via PIN e emite JWT próprio.
     Pai deve estar logado para autorizar login da criança.
+
+    `request: Request` (Starlette) e' exigido pelo SlowAPI; o body fica em `payload`.
     """
     try:
         # Verifica se criança pertence ao pai
         child_data = await db.execute_query(
             "SELECT id, parent_id, name, age, avatar_id, pin_hash FROM children WHERE id = $1",
-            request.child_id
+            payload.child_id
         )
 
         if not child_data:
@@ -236,13 +245,13 @@ async def child_login(request: ChildLoginRequest, auth: ParentAuth, db: DBClient
 
         # Verifica PIN se configurado
         if child['pin_hash']:
-            if not request.pin:
+            if not payload.pin:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={"error": {"code": "PIN_REQUIRED", "message": "PIN obrigatório"}}
                 )
 
-            if not verify_pin(request.pin, child['pin_hash']):
+            if not verify_pin(payload.pin, child['pin_hash']):
                 # TODO: implementar bloqueio após 3 tentativas erradas
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,

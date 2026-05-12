@@ -13,14 +13,19 @@ else
     echo "[migrate] 001 already applied, skipping"
 fi
 
-LESSONS_COUNT=$(psql "$DATABASE_URL" -t -c "SELECT COUNT(*) FROM lessons;" | tr -d ' \n')
+# Suprime stderr para o teste — se a tabela lessons nao existir, psql
+# escreve erro em stderr e stdout fica vazio. Tratamos string vazia como
+# "precisa rodar 002" (caso normal: rodada anterior nao chegou na 001 ou
+# a tabela foi dropada). Sem este check, "" != "0" caia no else por engano
+# e pulava 002 mesmo numa DB sem schema seed.
+LESSONS_COUNT=$(psql "$DATABASE_URL" -t -c "SELECT COUNT(*) FROM lessons;" 2>/dev/null | tr -d ' \n')
 
-if [ "$LESSONS_COUNT" = "0" ]; then
+if [ -z "$LESSONS_COUNT" ] || [ "$LESSONS_COUNT" = "0" ]; then
     echo "[migrate] running 002_seed_data.sql..."
     psql "$DATABASE_URL" -f app/db/migrations/002_seed_data.sql
     echo "[migrate] 002 done"
 else
-    echo "[migrate] 002 already applied, skipping"
+    echo "[migrate] 002 already applied (lessons=$LESSONS_COUNT), skipping"
 fi
 
 echo "[migrate] done. starting server..."
