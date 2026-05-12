@@ -1,48 +1,26 @@
-#!/usr/bin/env bash
-# Bootstrap de migrations - roda os SQLs em ordem, com gate de idempotencia.
-#
-# Quando rodar:
-#   Chamado no startCommand do Railway antes do uvicorn. Em ambiente local,
-#   tambem da pra rodar manual: DATABASE_URL=... ./run_migrations.sh
-#
-# Idempotencia:
-#   - 001 (schema): so roda se a tabela `parents` ainda nao existir. A 001
-#     tem CREATE TABLE sem IF NOT EXISTS, entao a segunda passada estouraria.
-#   - 002 (seed): so roda se a tabela `lessons` estiver vazia. Usar lessons
-#     como gate evita falha quando a tabela challenges nao existe ainda (por
-#     exemplo, schema parcial de um deploy anterior). lessons tambem e'
-#     criada na 001 e populada na 002, entao funciona como sentinela.
+#!/bin/bash
+set -e
 
-set -euo pipefail
+echo "[migrate] checking database..."
 
-if [[ -z "${DATABASE_URL:-}" ]]; then
-  echo "[migrate] ERRO: DATABASE_URL nao esta definida." >&2
-  exit 1
-fi
+TABLE_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='parents');" | tr -d ' \n')
 
-# Diretorio onde os SQLs ficam dentro do container (copiado via Dockerfile).
-MIGRATIONS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/app/db/migrations"
-
-# --- 001_initial_schema.sql ---------------------------------------------
-# Check via psql \dt: lista a tabela quando ela existe.
-# Grep com regex casa SO a linha do formato "public | parents | ...";
-# a mensagem de erro "Did not find any relation named 'parents'." tambem
-# contem a palavra parents, entao um grep solto daria falso positivo.
-if ! psql "$DATABASE_URL" -c "\dt parents" 2>&1 | grep -qE '^[[:space:]]*public[[:space:]]*\|[[:space:]]*parents[[:space:]]*\|'; then
-  echo "[migrate] aplicando 001_initial_schema.sql"
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIGRATIONS_DIR/001_initial_schema.sql"
+if [ "$TABLE_EXISTS" = "f" ]; then
+    echo "[migrate] running 001_initial_schema.sql..."
+    psql "$DATABASE_URL" -f app/db/migrations/001_initial_schema.sql
+    echo "[migrate] 001 done"
 else
-  echo "[migrate] schema ja existe, pulando 001"
+    echo "[migrate] 001 already applied, skipping"
 fi
 
-# --- 002_seed_data.sql --------------------------------------------------
-LESSONS_COUNT=$(psql "$DATABASE_URL" -tAc "SELECT COUNT(*) FROM lessons;")
+LESSONS_COUNT=$(psql "$DATABASE_URL" -t -c "SELECT COUNT(*) FROM lessons;" | tr -d ' \n')
 
-if [[ "$LESSONS_COUNT" == "0" ]]; then
-  echo "[migrate] aplicando 002_seed_data.sql"
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$MIGRATIONS_DIR/002_seed_data.sql"
+if [ "$LESSONS_COUNT" = "0" ]; then
+    echo "[migrate] running 002_seed_data.sql..."
+    psql "$DATABASE_URL" -f app/db/migrations/002_seed_data.sql
+    echo "[migrate] 002 done"
 else
-  echo "[migrate] seed ja aplicada (${LESSONS_COUNT} licoes), pulando 002"
+    echo "[migrate] 002 already applied, skipping"
 fi
 
-echo "[migrate] OK"
+echo "[migrate] done. starting server..."
