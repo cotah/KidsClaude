@@ -28,11 +28,5 @@
       "source": "/health",
       "destination": "/api/health"
     }
-  ],
-  "env": {
-    "NEXT_PUBLIC_API_BASE_URL": "@next_public_api_base_url",
-    "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
-    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key"
-  }
+  ]
 }
