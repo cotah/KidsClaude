@@ -4,15 +4,17 @@
 
 BEGIN;
 
--- Limpa em ordem reversa de FK porque lesson_progress, prompt_templates e
--- chat_sessions referenciam lessons SEM ON DELETE CASCADE no schema 001.
--- Sem essas linhas, DELETE FROM lessons quebra com FK violation em prod.
--- challenges TEM cascade mas DELETE explicito e' inofensivo e simetrico.
-DELETE FROM chat_messages WHERE session_id IN (SELECT id FROM chat_sessions);
-DELETE FROM chat_sessions;
-DELETE FROM lesson_progress;
-DELETE FROM prompt_templates;
+-- Limpa em ordem reversa de FK. Tabelas-filho ANTES das pais para nao
+-- estourar foreign key violation. challenge_attempts referencia challenges
+-- (FK sem CASCADE) e precisa vir antes do DELETE FROM challenges; o resto
+-- segue o mesmo principio. chat_messages/chat_sessions ficam escopados
+-- por lesson_id para nao apagar sessoes de outras licoes caso existam.
+DELETE FROM challenge_attempts;
 DELETE FROM challenges;
+DELETE FROM prompt_templates;
+DELETE FROM lesson_progress;
+DELETE FROM chat_messages WHERE session_id IN (SELECT id FROM chat_sessions WHERE lesson_id IN (SELECT id FROM lessons));
+DELETE FROM chat_sessions WHERE lesson_id IN (SELECT id FROM lessons);
 DELETE FROM lessons;
 
 -- Insert Stage 1: Discovery (Easy) - 6-8 age band, 50 XP each
