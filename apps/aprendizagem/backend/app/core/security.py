@@ -3,14 +3,24 @@ Utilitários de segurança: autenticação, JWT, hashing.
 Implementa autenticação dupla: parent (Supabase) e child (backend).
 """
 
+import time
 import jwt
 import bcrypt
+import httpx
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
+from jose import jwt as jose_jwt
+from jose.exceptions import ExpiredSignatureError as JoseExpiredSignatureError
+from jose.exceptions import JWTError as JoseJWTError
 
 from app.core.config import settings
+
+# Cache do JWKS publico do Supabase: mapeia URL -> (timestamp_monotonic, kid_to_jwk).
+# JWKS muda raramente (rotacao de chaves), entao 1h de TTL e' seguro.
+_JWKS_CACHE: dict[str, tuple[float, dict[str, dict]]] = {}
+_JWKS_TTL_SECONDS = 3600
 
 # Context para hashing de passwords (PINs)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -39,28 +49,68 @@ def verify_pin(pin: str, hashed: str) -> bool:
     return pwd_context.verify(pin, hashed)
 
 
+def _get_jwks() -> dict[str, dict]:
+    """
+    Busca (ou retorna do cache) o JWKS publico do projeto Supabase.
+    Endpoint padrao: <supabase_url>/auth/v1/.well-known/jwks.json
+    """
+    jwks_url = f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+    now = time.monotonic()
+    cached = _JWKS_CACHE.get(jwks_url)
+    if cached and (now - cached[0]) < _JWKS_TTL_SECONDS:
+        return cached[1]
+
+    response = httpx.get(jwks_url, timeout=5.0)
+    response.raise_for_status()
+    data = response.json()
+    keys_by_kid = {
+        key["kid"]: key for key in data.get("keys", []) if "kid" in key
+    }
+    _JWKS_CACHE[jwks_url] = (now, keys_by_kid)
+    return keys_by_kid
+
+
 def verify_supabase_jwt(token: str) -> Dict[str, Any]:
     """
     Verifica JWT emitido pelo Supabase Auth.
-    Usa o secret configurado para validar assinatura.
+    Tokens recentes do Supabase usam ES256 (ECDSA P-256, chave assimetrica);
+    a chave publica vem do endpoint JWKS publico do projeto. O secret
+    simetrico antigo (SUPABASE_JWT_SECRET / HS256) nao valida ES256.
     """
     try:
-        payload = jwt.decode(
+        # Le o header sem verificar para descobrir qual kid foi usado.
+        header = jose_jwt.get_unverified_header(token)
+        kid = header.get("kid")
+        if not kid:
+            raise AuthError("Token sem kid no header")
+
+        jwks = _get_jwks()
+        key_data = jwks.get(kid)
+        if not key_data:
+            # kid desconhecido pode ser cache stale apos rotacao - retenta uma vez.
+            _JWKS_CACHE.clear()
+            jwks = _get_jwks()
+            key_data = jwks.get(kid)
+            if not key_data:
+                raise AuthError(f"Chave publica nao encontrada para kid {kid}")
+
+        payload = jose_jwt.decode(
             token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            options={"verify_aud": False}  # Supabase não usa aud padrão
+            key_data,
+            algorithms=["ES256"],
+            options={"verify_aud": False},  # Supabase nao usa aud no padrao
         )
 
-        # Verifica se é um token de parent
         if payload.get("role") != "authenticated":
-            raise AuthError("Token inválido: role incorreto")
+            raise AuthError("Token invalido: role incorreto")
 
         return payload
-    except jwt.ExpiredSignatureError:
+    except JoseExpiredSignatureError:
         raise AuthError("Token expirado")
-    except jwt.InvalidTokenError as e:
-        raise AuthError(f"Token inválido: {str(e)}")
+    except JoseJWTError as e:
+        raise AuthError(f"Token invalido: {str(e)}")
+    except httpx.HTTPError as e:
+        raise AuthError(f"Servico de autenticacao indisponivel: {str(e)}")
 
 
 def create_child_jwt(child_id: str, parent_id: str) -> str:
