@@ -256,3 +256,106 @@ async def get_child_progress(child_id: str, auth: ParentAuth, db: DBClient):
     except Exception as e:
         logger.error("Erro ao buscar progresso", error=str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+async def _ensure_owns_child(child_id: str, parent_id: str, db) -> None:
+    """Levanta 404 se a crianca nao existir ou nao pertencer ao pai."""
+    rows = await db.execute_query(
+        "SELECT id FROM children WHERE id = $1 AND parent_id = $2",
+        child_id, parent_id
+    )
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Criança não encontrada"}}
+        )
+
+
+@router.get("/{child_id}/badges")
+async def get_child_badges(child_id: str, auth: ParentAuth, db: DBClient):
+    """
+    Lista conquistas (badges) desbloqueadas pela crianca.
+    Retorna envelope { badges: [...] } - array vazio se ainda nada.
+    """
+    try:
+        await _ensure_owns_child(child_id, auth.user_id, db)
+
+        rows = await db.execute_query(
+            """
+            SELECT b.id, b.code, b.name, b.description, b.icon, cb.awarded_at
+            FROM child_badges cb
+            JOIN badges b ON cb.badge_id = b.id
+            WHERE cb.child_id = $1
+            ORDER BY cb.awarded_at DESC
+            """,
+            child_id,
+        )
+
+        return {
+            "badges": [
+                {
+                    "id": str(row["id"]),
+                    "code": row["code"],
+                    "name": row["name"],
+                    "description": row["description"],
+                    "icon": row["icon"],
+                    "awarded_at": (
+                        row["awarded_at"].isoformat() if row["awarded_at"] else None
+                    ),
+                }
+                for row in rows
+            ]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro ao buscar badges", error=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.get("/{child_id}/usage")
+async def get_child_usage_history(
+    child_id: str,
+    auth: ParentAuth,
+    db: DBClient,
+    days: int = 30,
+):
+    """
+    Historico de uso diario (minutos por dia) dos ultimos `days` dias.
+    Retorna envelope { usage: [...] } - array vazio se ainda nada.
+    Aceita `?days=N` (default 30, clamp 1..365).
+    """
+    try:
+        await _ensure_owns_child(child_id, auth.user_id, db)
+
+        days = max(1, min(days, 365))
+
+        rows = await db.execute_query(
+            """
+            SELECT usage_date, minutes_used
+            FROM daily_usage
+            WHERE child_id = $1
+              AND usage_date >= CURRENT_DATE - ($2::int * INTERVAL '1 day')
+            ORDER BY usage_date DESC
+            """,
+            child_id, days,
+        )
+
+        return {
+            "usage": [
+                {
+                    "date": (
+                        row["usage_date"].isoformat() if row["usage_date"] else None
+                    ),
+                    "minutes_used": int(row["minutes_used"] or 0),
+                }
+                for row in rows
+            ]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro ao buscar uso diario", error=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
