@@ -77,10 +77,14 @@ async def parent_signup(request: Request, payload: ParentSignupRequest, db: DBCl
 
 @router.post("/parent/login", response_model=ParentLoginResponse)
 @limiter.limit("5/minute")
-async def parent_login(request: Request, payload: ParentLoginRequest):
+async def parent_login(request: Request, payload: ParentLoginRequest, db: DBClient):
     """
-    Autentica pai via Supabase Auth.
-    Rate limit contra ataques de força bruta.
+    Autentica pai via Supabase Auth e sincroniza registro local.
+
+    Apos auth bem-sucedida, garante que o pai exista na tabela `parents`
+    do Postgres do Railway. Sem isso, GET /v1/auth/parent/me devolve 404
+    e POST /v1/children quebra a FK ao tentar associar o filho ao pai
+    (parent_id). UPSERT idempotente: cria se nao existir, ignora se existir.
 
     `request: Request` (Starlette) e' exigido pelo SlowAPI; o body fica em `payload`.
     """
@@ -96,7 +100,29 @@ async def parent_login(request: Request, payload: ParentLoginRequest):
                 detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Email ou senha incorretos"}}
             )
 
-        logger.info("Login pai", user_id=auth_response.user.id)
+        user_id = auth_response.user.id
+        email = auth_response.user.email
+        # display_name vem do user_metadata se foi setado no signup; pode faltar.
+        user_metadata = getattr(auth_response.user, "user_metadata", None) or {}
+        display_name = (
+            user_metadata.get("display_name") if isinstance(user_metadata, dict) else None
+        )
+
+        # UPSERT do pai no DB local. Mantemos display_name existente caso ja
+        # esteja preenchido (so atualiza email se mudou, atualiza updated_at).
+        await db.execute_non_query(
+            """
+            INSERT INTO parents (id, email, display_name)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (id) DO UPDATE
+            SET email = EXCLUDED.email,
+                display_name = COALESCE(parents.display_name, EXCLUDED.display_name),
+                updated_at = NOW()
+            """,
+            user_id, email, display_name,
+        )
+
+        logger.info("Login pai (synced to local DB)", user_id=user_id, email=email)
 
         return ParentLoginResponse(
             access_token=auth_response.session.access_token,
