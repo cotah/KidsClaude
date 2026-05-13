@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("/", response_model=List[LessonListItem])
+@router.get("", response_model=List[LessonListItem])
 async def list_lessons(
     auth: AnyAuth,
     db: DBClient,

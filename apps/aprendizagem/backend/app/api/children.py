@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ChildResponse])
+@router.get("", response_model=List[ChildResponse])
 async def list_children(auth: ParentAuth, db: DBClient):
     """
     Lista todos os filhos do pai autenticado.
@@ -45,7 +45,7 @@ async def list_children(auth: ParentAuth, db: DBClient):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@router.post("/", response_model=ChildResponse, status_code=201)
+@router.post("", response_model=ChildResponse, status_code=201)
 async def create_child(request: ChildCreateRequest, auth: ParentAuth, db: DBClient):
     """
     Cria novo perfil de criança para o pai autenticado.

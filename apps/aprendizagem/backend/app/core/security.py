@@ -3,24 +3,39 @@ Utilitários de segurança: autenticação, JWT, hashing.
 Implementa autenticação dupla: parent (Supabase) e child (backend).
 """
 
-import time
 import jwt
 import bcrypt
-import httpx
+import structlog
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
-from jose import jwt as jose_jwt
-from jose.exceptions import ExpiredSignatureError as JoseExpiredSignatureError
-from jose.exceptions import JWTError as JoseJWTError
+from jwt import PyJWKClient
 
 from app.core.config import settings
 
-# Cache do JWKS publico do Supabase: mapeia URL -> (timestamp_monotonic, kid_to_jwk).
-# JWKS muda raramente (rotacao de chaves), entao 1h de TTL e' seguro.
-_JWKS_CACHE: dict[str, tuple[float, dict[str, dict]]] = {}
-_JWKS_TTL_SECONDS = 3600
+logger = structlog.get_logger()
+
+# Cliente JWKS singleton (cacheia chaves por 1h internamente).
+# PyJWKClient e' mais robusto para ES256 do que python-jose 3.3.0,
+# que tem bugs conhecidos de verificacao ECDSA.
+_jwks_client: PyJWKClient | None = None
+
+
+def _get_jwks_client() -> PyJWKClient:
+    """Retorna (e inicializa lazy) o cliente JWKS do projeto Supabase."""
+    global _jwks_client
+    if _jwks_client is None:
+        jwks_url = (
+            f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        )
+        _jwks_client = PyJWKClient(
+            jwks_url,
+            cache_keys=True,
+            lifespan=3600,  # cache de 1h
+        )
+        logger.info("JWKS client initialized", url=jwks_url)
+    return _jwks_client
 
 # Context para hashing de passwords (PINs)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -49,68 +64,49 @@ def verify_pin(pin: str, hashed: str) -> bool:
     return pwd_context.verify(pin, hashed)
 
 
-def _get_jwks() -> dict[str, dict]:
-    """
-    Busca (ou retorna do cache) o JWKS publico do projeto Supabase.
-    Endpoint padrao: <supabase_url>/auth/v1/.well-known/jwks.json
-    """
-    jwks_url = f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
-    now = time.monotonic()
-    cached = _JWKS_CACHE.get(jwks_url)
-    if cached and (now - cached[0]) < _JWKS_TTL_SECONDS:
-        return cached[1]
-
-    response = httpx.get(jwks_url, timeout=5.0)
-    response.raise_for_status()
-    data = response.json()
-    keys_by_kid = {
-        key["kid"]: key for key in data.get("keys", []) if "kid" in key
-    }
-    _JWKS_CACHE[jwks_url] = (now, keys_by_kid)
-    return keys_by_kid
-
-
 def verify_supabase_jwt(token: str) -> Dict[str, Any]:
     """
     Verifica JWT emitido pelo Supabase Auth.
-    Tokens recentes do Supabase usam ES256 (ECDSA P-256, chave assimetrica);
-    a chave publica vem do endpoint JWKS publico do projeto. O secret
-    simetrico antigo (SUPABASE_JWT_SECRET / HS256) nao valida ES256.
+    Tokens Supabase usam ES256 (ECDSA P-256). Usamos PyJWKClient que faz
+    o fetch da JWKS, escolhe a chave certa pelo kid do header e cacheia
+    automaticamente. Logs estruturados em cada falha pra facilitar debug
+    via Railway logs.
     """
     try:
-        # Le o header sem verificar para descobrir qual kid foi usado.
-        header = jose_jwt.get_unverified_header(token)
-        kid = header.get("kid")
-        if not kid:
-            raise AuthError("Token sem kid no header")
+        jwks_client = _get_jwks_client()
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
 
-        jwks = _get_jwks()
-        key_data = jwks.get(kid)
-        if not key_data:
-            # kid desconhecido pode ser cache stale apos rotacao - retenta uma vez.
-            _JWKS_CACHE.clear()
-            jwks = _get_jwks()
-            key_data = jwks.get(kid)
-            if not key_data:
-                raise AuthError(f"Chave publica nao encontrada para kid {kid}")
-
-        payload = jose_jwt.decode(
+        payload = jwt.decode(
             token,
-            key_data,
+            signing_key.key,
             algorithms=["ES256"],
-            options={"verify_aud": False},  # Supabase nao usa aud no padrao
+            options={
+                "verify_aud": False,  # Supabase nao usa aud padrao
+                "verify_iss": False,  # iss varia (ex: /auth/v1 sufixo)
+            },
         )
 
-        if payload.get("role") != "authenticated":
+        role = payload.get("role")
+        if role != "authenticated":
+            logger.warning("JWT role check failed", role=role)
             raise AuthError("Token invalido: role incorreto")
 
         return payload
-    except JoseExpiredSignatureError:
+
+    except jwt.ExpiredSignatureError:
+        logger.info("JWT expired")
         raise AuthError("Token expirado")
-    except JoseJWTError as e:
+    except jwt.PyJWKClientError as e:
+        logger.error("JWKS fetch/parse failed", error=str(e))
+        raise AuthError(f"Erro ao buscar chave de verificacao: {str(e)}")
+    except jwt.InvalidTokenError as e:
+        logger.warning("JWT verification failed", error=str(e))
         raise AuthError(f"Token invalido: {str(e)}")
-    except httpx.HTTPError as e:
-        raise AuthError(f"Servico de autenticacao indisponivel: {str(e)}")
+    except Exception as e:
+        # Catch-all defensivo - sem isso uma excecao inesperada vira 500
+        # generico no FastAPI; aqui logamos e retornamos 401 explicito.
+        logger.exception("Unexpected error in verify_supabase_jwt", error=str(e))
+        raise AuthError(f"Falha de autenticacao: {str(e)}")
 
 
 def create_child_jwt(child_id: str, parent_id: str) -> str:

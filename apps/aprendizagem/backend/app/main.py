@@ -69,13 +69,17 @@ async def lifespan(app: FastAPI):
 
 
 # Criação da aplicação
+# redirect_slashes=False evita 307 entre /v1/x e /v1/x/ - importante porque o
+# BFF proxy do frontend usa fetch() que pode strippar o Authorization header
+# em redirects, transformando 200 em 401 silenciosamente.
 app = FastAPI(
     title="Aprendizagem API",
     description="API backend para app educacional de IA para crianças",
     version="1.0.0",
     docs_url="/docs" if not settings.is_production else None,
     redoc_url="/redoc" if not settings.is_production else None,
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 # Rate limiting
