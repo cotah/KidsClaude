@@ -477,7 +477,7 @@ SELECT
 FROM lesson_ids l;
 
 -- Add the new CAPSTONE_BUILDER badge
-INSERT INTO badges (id, code, name, description, unlock_criteria, icon)
+INSERT INTO badges (id, code, name, description, unlock_rule, icon)
 VALUES (
   gen_random_uuid(),
   'CAPSTONE_BUILDER',
