@@ -148,12 +148,13 @@ export default function LessonPage() {
             )}
 
             {block.type === 'image' && (
-              <div className="text-center">
-                <img
-                  src={block.content || '/placeholder-image.svg'}
-                  alt="Ilustração da lição"
-                  className="mx-auto max-w-full h-auto rounded-lg shadow-md"
-                />
+              // Placeholder com mesmo estilo do bloco de animacao (sem
+              // broken-image icon). Mostra o nome do asset (alt > src >
+              // content) com um emoji ate' termos imagens reais.
+              <div className="aspect-video bg-gradient-to-br from-blue-100 to-emerald-100 rounded-lg flex items-center justify-center">
+                <p className="text-blue-700 font-medium">
+                  ✨ Imagem: {block.alt || block.src || block.content || 'em breve'}
+                </p>
               </div>
             )}
 
