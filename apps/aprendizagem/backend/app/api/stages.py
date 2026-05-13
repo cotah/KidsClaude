@@ -29,18 +29,38 @@ async def get_stages(auth: AnyAuth, db: DBClient):
             4: {"name": "Prompt Engineering", "description": "Técnicas avançadas de prompting", "age_band_label": "12+ anos", "difficulty": "advanced"}
         }
 
-        # Busca progresso por stage
-        stage_progress = await db.execute_query("""
-            SELECT
-                l.stage,
-                COUNT(*) as total_lessons,
-                COUNT(lp.status) FILTER (WHERE lp.status = 'completed') as completed_lessons
-            FROM lessons l
-            LEFT JOIN lesson_progress lp ON l.id = lp.lesson_id AND lp.child_id = $1
-            WHERE l.is_active = true AND l.is_final_exam = false
-            GROUP BY l.stage
-            ORDER BY l.stage
-        """, auth.user_id if auth.is_child else None)
+        # Busca progresso por stage. Duas queries separadas para evitar passar
+        # NULL como child_id (asyncpg pode reclamar do tipo). Pai ve' progresso
+        # zerado (so' contagem total de licoes); crianca ve' o proprio progresso.
+        if auth.is_child:
+            stage_progress = await db.execute_query(
+                """
+                SELECT
+                    l.stage,
+                    COUNT(*) AS total_lessons,
+                    COUNT(lp.status) FILTER (WHERE lp.status = 'completed') AS completed_lessons
+                FROM lessons l
+                LEFT JOIN lesson_progress lp
+                  ON l.id = lp.lesson_id AND lp.child_id = $1
+                WHERE l.is_active = true AND l.is_final_exam = false
+                GROUP BY l.stage
+                ORDER BY l.stage
+                """,
+                auth.user_id,
+            )
+        else:
+            stage_progress = await db.execute_query(
+                """
+                SELECT
+                    l.stage,
+                    COUNT(*) AS total_lessons,
+                    0 AS completed_lessons
+                FROM lessons l
+                WHERE l.is_active = true AND l.is_final_exam = false
+                GROUP BY l.stage
+                ORDER BY l.stage
+                """
+            )
 
         # Cria mapa de progresso
         progress_map = {}
@@ -120,6 +140,17 @@ async def get_stages(auth: AnyAuth, db: DBClient):
 
         return StagesResponse(stages=stages, final_exam=final_exam)
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Erro ao buscar stages", error=str(e))
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # logger.exception inclui o traceback completo nos logs do Railway.
+        # Tambem incluimos `detail` no HTTPException para o frontend mostrar
+        # a mensagem real em vez do fallback "Erro desconhecido".
+        logger.exception("Erro ao buscar stages", error=str(e), error_type=type(e).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {
+                "code": "STAGES_ERROR",
+                "message": f"Falha ao buscar stages: {type(e).__name__}: {str(e)}",
+            }},
+        )
