@@ -52,10 +52,15 @@ async def parent_signup(request: Request, payload: ParentSignupRequest, db: DBCl
 
         user_id = auth_response.user.id
 
-        # Insere na tabela parents
+        # Insere na tabela parents - idempotente para signup repetido apos
+        # falha intermediaria (ex: rede caiu antes da resposta).
         await db.execute_non_query(
-            "INSERT INTO parents (id, email, display_name) VALUES ($1, $2, $3)",
-            user_id, payload.email, payload.display_name
+            """
+            INSERT INTO parents (id, email, display_name)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            user_id, payload.email, payload.display_name,
         )
 
         logger.info("Pai cadastrado", user_id=user_id, email=payload.email)
