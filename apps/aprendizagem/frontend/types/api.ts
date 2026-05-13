@@ -117,7 +117,15 @@ export interface StagesResponse {
 // Lessons
 export interface ContentBlock {
   type: 'text' | 'image' | 'video' | 'animation';
+  // content e' obrigatorio em blocos de texto, opcional em image/video
+  // (que podem usar src/alt no lugar). Mantemos string para nao quebrar
+  // os call sites existentes que assumem string.
   content: string;
+  // Campos extras suportados pelo schema backend (schemas/lessons.py
+  // ContentBlock). image blocks usam alt/src; outros tipos podem usar
+  // metadata. Todos opcionais para nao quebrar dados antigos.
+  src?: string;
+  alt?: string;
   metadata?: Record<string, any>;
 }
 
