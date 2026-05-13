@@ -19,13 +19,15 @@ export function ChildNavbar() {
   const router = useRouter();
   const { currentChild } = useAppStore();
 
-  // Simulando dados da criança logada
-  const childData = currentChild || {
-    id: 'mock',
-    name: 'Criança',
-    level: 1,
-    xp: 50,
-    streak_days: 0,
+  // Defensivo: se o login da crianca devolveu um objeto incompleto, garantimos
+  // que xp/level/streak nao virem undefined (que estoura NaN na barra de XP e
+  // 'Nivel undefined' no header).
+  const childData = {
+    id: currentChild?.id ?? 'mock',
+    name: currentChild?.name ?? 'Criança',
+    level: Number(currentChild?.level) || 1,
+    xp: Number(currentChild?.xp) || 0,
+    streak_days: Number(currentChild?.streak_days) || 0,
   };
 
   // Recalcula nivel/progresso a partir do XP para evitar drift com o backend.

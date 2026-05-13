@@ -55,7 +55,10 @@ export default function PlayPage() {
     );
   }
 
-  const levelInfo = calculateLevelInfo(currentChild.xp);
+  // currentChild pode chegar com xp/level undefined quando o login devolve
+  // o shape incompleto. Number(undefined) e' NaN, que estoura na barra de XP
+  // e nos textos do header - coage explicitamente.
+  const levelInfo = calculateLevelInfo(Number(currentChild.xp) || 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100">

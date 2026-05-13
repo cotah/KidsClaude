@@ -253,9 +253,16 @@ async def child_login(request: Request, payload: ChildLoginRequest, auth: Parent
     `request: Request` (Starlette) e' exigido pelo SlowAPI; o body fica em `payload`.
     """
     try:
-        # Verifica se criança pertence ao pai
+        # Verifica se criança pertence ao pai. Buscamos os campos completos
+        # (xp/level/streak/etc.) para devolver na resposta de login, evitando
+        # que o frontend trabalhe com undefined no header e barra de XP.
         child_data = await db.execute_query(
-            "SELECT id, parent_id, name, age, avatar_id, pin_hash FROM children WHERE id = $1",
+            """
+            SELECT id, parent_id, name, age, avatar_id, pin_hash,
+                   xp, level, streak_days, daily_limit_minutes, last_active_date
+            FROM children
+            WHERE id = $1
+            """,
             payload.child_id
         )
 
@@ -301,7 +308,16 @@ async def child_login(request: Request, payload: ChildLoginRequest, auth: Parent
                 "id": child['id'],
                 "name": child['name'],
                 "age": child['age'],
-                "avatar_id": child['avatar_id']
+                "avatar_id": child['avatar_id'],
+                "xp": int(child.get('xp') or 0),
+                "level": int(child.get('level') or 1),
+                "streak_days": int(child.get('streak_days') or 0),
+                "daily_limit_minutes": int(child.get('daily_limit_minutes') or 30),
+                "last_active_date": (
+                    child['last_active_date'].isoformat()
+                    if child.get('last_active_date') else None
+                ),
+                "pin_set": bool(child.get('pin_hash')),
             }
         )
 

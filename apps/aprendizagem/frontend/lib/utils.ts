@@ -51,6 +51,16 @@ export function formatDateForKids(date: Date | string): string {
 }
 
 /**
+ * Coage o valor recebido para um inteiro de XP seguro. Trata undefined/null/
+ * NaN/strings vazias como 0 (cenario comum quando o login da crianca devolve
+ * o objeto incompleto e o frontend usa o store antes de uma sincronizacao).
+ */
+function _safeXp(xp: unknown): number {
+  const n = Number(xp);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+}
+
+/**
  * Calcula o nivel da crianca a partir do XP total acumulado.
  * Espelha o backend (gamification.calculate_level_from_xp):
  *   xp_per_level(n) = 100 * n * (n+1) / 2 e' o threshold para alcancar nivel n+1.
@@ -58,9 +68,9 @@ export function formatDateForKids(date: Date | string): string {
  * Exemplos: xp=0 -> nivel 1, xp=299 -> nivel 1, xp=300 -> nivel 2, xp=600 -> nivel 3.
  */
 export function getLevelFromXp(xp: number): number {
-  if (xp < 0) return 1;
+  const safe = _safeXp(xp);
   let level = 1;
-  while (level < 10 && config.gamification.xpPerLevel(level + 1) <= xp) {
+  while (level < 10 && config.gamification.xpPerLevel(level + 1) <= safe) {
     level++;
   }
   return level;
@@ -81,24 +91,27 @@ export function getLevelFloor(level: number): number {
  */
 export function getProgressToNextLevel(xp: number, level: number): number {
   if (level >= 10) return 100;
+  const safe = _safeXp(xp);
   const floor = getLevelFloor(level);
   const ceiling = getLevelFloor(level + 1);
   const required = ceiling - floor;
   if (required <= 0) return 100;
-  const raw = ((xp - floor) / required) * 100;
+  const raw = ((safe - floor) / required) * 100;
   return Math.min(100, Math.max(0, raw));
 }
 
 /**
  * Calcula informacoes do nivel atual a partir do XP total.
+ * Tolera xp undefined/NaN/null tratando como 0.
  */
 export function calculateLevelInfo(xp: number): LevelInfo {
-  const level = getLevelFromXp(xp);
+  const safe = _safeXp(xp);
+  const level = getLevelFromXp(safe);
   const floor = getLevelFloor(level);
   const ceiling = getLevelFloor(level + 1);
-  const xp_current = xp - floor;
+  const xp_current = safe - floor;
   const xp_needed = ceiling - floor;
-  const progress_percent = getProgressToNextLevel(xp, level);
+  const progress_percent = getProgressToNextLevel(safe, level);
 
   return {
     current: level,
