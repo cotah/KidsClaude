@@ -147,10 +147,10 @@ export default function LessonPage() {
               </div>
             )}
 
+            {/* Placeholder com mesmo estilo do bloco de animacao (sem
+                broken-image icon). Mostra o nome do asset (alt > src >
+                content) com um emoji ate' termos imagens reais. */}
             {block.type === 'image' && (
-              // Placeholder com mesmo estilo do bloco de animacao (sem
-              // broken-image icon). Mostra o nome do asset (alt > src >
-              // content) com um emoji ate' termos imagens reais.
               <div className="aspect-video bg-gradient-to-br from-blue-100 to-emerald-100 rounded-lg flex items-center justify-center">
                 <p className="text-blue-700 font-medium">
                   ✨ Imagem: {block.alt || block.src || block.content || 'em breve'}
