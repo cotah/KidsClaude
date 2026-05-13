@@ -97,16 +97,24 @@ class ApiClient {
 
 function handleUnauthorized(): void {
   if (typeof window === 'undefined') return;
-  // Limpa cookies via route handler (cookies httpOnly so somem por server side).
+  const currentPath = window.location.pathname;
+
+  // Em rotas de crianca (/play/*) NAO derruba sessao automaticamente em 401.
+  // Um 401 isolado nao deve interromper a experiencia: pode ser um endpoint
+  // que ainda nao aceita child auth, um glitch transitorio, etc. A crianca
+  // so' deve sair via botao de logout explicito ou quando o cookie expirar
+  // (middleware redireciona pra /select no proximo nav). Logamos para debug.
+  if (currentPath.startsWith('/play')) {
+    console.warn('[apiClient] 401 em rota /play — sessao mantida, sem redirect.');
+    return;
+  }
+
+  // Em rotas do pai mantemos o comportamento original: limpa sessao e
+  // manda pro login. JWT do Supabase pode ter expirado; precisa novo login.
   fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {
     // Logout deve sempre prosseguir mesmo se o servidor falhar.
   });
-  const currentPath = window.location.pathname;
-  if (currentPath.startsWith('/play')) {
-    window.location.href = '/select';
-  } else {
-    window.location.href = '/login';
-  }
+  window.location.href = '/login';
 }
 
 // Instancia singleton.

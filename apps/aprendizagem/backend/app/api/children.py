@@ -14,7 +14,7 @@ from app.schemas.children import (
     BadgeInfo
 )
 from app.schemas.common import ErrorResponse
-from app.core.dependencies import ParentAuth, DBClient
+from app.core.dependencies import ParentAuth, AnyAuth, DBClient
 from app.core.security import hash_pin
 
 logger = structlog.get_logger()
@@ -22,21 +22,31 @@ router = APIRouter()
 
 
 @router.get("", response_model=List[ChildResponse])
-async def list_children(auth: ParentAuth, db: DBClient):
+async def list_children(auth: AnyAuth, db: DBClient):
     """
-    Lista todos os filhos do pai autenticado.
+    Lista filhos. Pai recebe todos os seus; crianca recebe apenas a si propria.
+    Aceitar ambas as auths evita 401 quando o app de crianca (BFF envia o
+    child token) toca este endpoint via cache de query compartilhada.
     """
     try:
-        children_data = await db.execute_query("""
-            SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                   level, xp, streak_days, last_active_date, created_at
-            FROM children
-            WHERE parent_id = $1
-            ORDER BY created_at ASC
-        """, auth.user_id)
+        if auth.is_parent:
+            children_data = await db.execute_query("""
+                SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
+                       level, xp, streak_days, last_active_date, created_at
+                FROM children
+                WHERE parent_id = $1
+                ORDER BY created_at ASC
+            """, auth.user_id)
+        else:  # crianca - retorna so' o proprio registro
+            children_data = await db.execute_query("""
+                SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
+                       level, xp, streak_days, last_active_date, created_at
+                FROM children
+                WHERE id = $1
+            """, auth.user_id)
 
         children = [ChildResponse(**child) for child in children_data]
-        logger.info("Filhos listados", parent_id=auth.user_id, count=len(children))
+        logger.info("Filhos listados", role=auth.role, count=len(children))
 
         return children
 
@@ -221,23 +231,30 @@ async def delete_child(child_id: str, auth: ParentAuth, db: DBClient):
 
 
 @router.get("/{child_id}/progress", response_model=ChildProgressResponse)
-async def get_child_progress(child_id: str, auth: ParentAuth, db: DBClient):
+async def get_child_progress(child_id: str, auth: AnyAuth, db: DBClient):
     """
-    Retorna progresso de lições da criança.
-    Pai pode ver progresso de qualquer filho.
+    Retorna progresso de licoes da crianca.
+    - Pai: ve progresso de qualquer filho seu.
+    - Crianca: ve apenas o proprio progresso.
     """
     try:
-        # Verifica propriedade
-        child_exists = await db.execute_query(
-            "SELECT id FROM children WHERE id = $1 AND parent_id = $2",
-            child_id, auth.user_id
-        )
-
-        if not child_exists:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": {"code": "NOT_FOUND", "message": "Criança não encontrada"}}
+        # Autorizacao depende do role
+        if auth.is_child:
+            if auth.user_id != child_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={"error": {"code": "FORBIDDEN", "message": "Acesso negado"}}
+                )
+        else:  # parent
+            child_exists = await db.execute_query(
+                "SELECT id FROM children WHERE id = $1 AND parent_id = $2",
+                child_id, auth.user_id
             )
+            if not child_exists:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"error": {"code": "NOT_FOUND", "message": "Criança não encontrada"}}
+                )
 
         # Busca progresso
         progress_data = await db.execute_query("""
@@ -311,6 +328,57 @@ async def get_child_badges(child_id: str, auth: ParentAuth, db: DBClient):
         raise
     except Exception as e:
         logger.error("Erro ao buscar badges", error=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.get("/{child_id}/safety-events")
+async def get_child_safety_events(
+    child_id: str,
+    auth: ParentAuth,
+    db: DBClient,
+    limit: int = 50,
+):
+    """
+    Lista eventos de seguranca da crianca (input_blocked, output_blocked,
+    session_terminated). So' o pai pode ver. Retorna { events: [...] }.
+    """
+    try:
+        await _ensure_owns_child(child_id, auth.user_id, db)
+
+        limit = max(1, min(limit, 200))
+
+        rows = await db.execute_query(
+            """
+            SELECT id, kind, details, session_id, created_at
+            FROM child_safety_events
+            WHERE child_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            """,
+            child_id, limit,
+        )
+
+        return {
+            "events": [
+                {
+                    "id": str(row["id"]),
+                    "kind": row["kind"],
+                    "details": row["details"],
+                    "session_id": (
+                        str(row["session_id"]) if row["session_id"] else None
+                    ),
+                    "created_at": (
+                        row["created_at"].isoformat() if row["created_at"] else None
+                    ),
+                }
+                for row in rows
+            ]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro ao buscar eventos de seguranca", error=str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
