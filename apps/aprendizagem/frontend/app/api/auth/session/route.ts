@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { config } from '@/lib/config';
 
 /**
- * Route handler para gerenciar sessões de auth via httpOnly cookies.
- * POST: cria nova sessão (após login)
- * DELETE: remove sessão (logout)
+ * Route handler para gerenciar sessoes de auth via httpOnly cookies.
+ *   POST   - cria nova sessao (apos login)
+ *   DELETE - remove sessao (logout)
+ *
+ * IMPORTANTE: setamos os cookies via `response.cookies.set(...)` no proprio
+ * NextResponse retornado, em vez de `cookies().set(...)` do `next/headers`.
+ * O segundo padrao depende do Next.js juntar magicamente o Set-Cookie no
+ * response em construcao; em Next 16 + Turbopack essa magia falha silenciosa
+ * e o response volta 200 sem Set-Cookie header. Usar response.cookies.set
+ * e' o caminho recomendado e a' prova de regressao.
  */
 
 interface LoginRequestBody {
@@ -16,40 +22,44 @@ interface LoginRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const { access_token, token_type, expires_in = 7 * 24 * 60 * 60 }: LoginRequestBody = await request.json();
+    const {
+      access_token,
+      token_type,
+      expires_in = 7 * 24 * 60 * 60,
+    }: LoginRequestBody = await request.json();
 
     if (!access_token || !token_type) {
       return NextResponse.json(
-        { error: { code: 'INVALID_REQUEST', message: 'Token e tipo obrigatórios' } },
+        { error: { code: 'INVALID_REQUEST', message: 'Token e tipo obrigatorios' } },
         { status: 400 }
       );
     }
 
-    // Determinar nome do cookie e configurações
-    const cookieName = token_type === 'parent'
-      ? config.auth.parentCookieName
-      : config.auth.childCookieName;
+    const cookieName =
+      token_type === 'parent'
+        ? config.auth.parentCookieName
+        : config.auth.childCookieName;
 
-    // Cookie httpOnly seguro. Path '/' para ambos os tokens porque o BFF proxy
-    // (/api/backend/...) precisa receber o cookie em qualquer rota. A separacao
-    // pai vs crianca e' enforced em duas camadas:
-    //   1) middleware.ts: redireciona crianca tentando acessar rotas de pai e
-    //      vice-versa.
-    //   2) backend: ChildAuth/ParentAuth verificam o JWT com segredos distintos.
-    const cookieOptions = {
+    // Cookie httpOnly seguro. Path '/' para ambos os tokens porque o BFF
+    // proxy (/api/backend/...) precisa receber o cookie em qualquer rota.
+    // A separacao pai vs crianca e' enforced em duas camadas:
+    //   1) middleware.ts redireciona crianca tentando acessar rotas de pai
+    //      e vice-versa.
+    //   2) backend ChildAuth/ParentAuth verificam o JWT com segredos distintos.
+    const response = NextResponse.json({ success: true });
+    response.cookies.set({
+      name: cookieName,
+      value: access_token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      sameSite: 'lax',
       path: '/',
       maxAge: expires_in,
-    };
+    });
 
-    const cookieStore = await cookies();
-    cookieStore.set(cookieName, access_token, cookieOptions);
-
-    return NextResponse.json({ success: true });
+    return response;
   } catch (error) {
-    console.error('Erro ao criar sessão:', error);
+    console.error('Erro ao criar sessao:', error);
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'Erro interno' } },
       { status: 500 }
@@ -58,19 +68,21 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE() {
-  try {
-    const cookieStore = await cookies();
-
-    // Remover ambos os cookies
-    cookieStore.delete(config.auth.parentCookieName);
-    cookieStore.delete(config.auth.childCookieName);
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Erro ao remover sessão:', error);
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'Erro interno' } },
-      { status: 500 }
-    );
+  // Logout: zera ambos os cookies via maxAge=0 (browser remove na hora).
+  const response = NextResponse.json({ success: true });
+  for (const name of [
+    config.auth.parentCookieName,
+    config.auth.childCookieName,
+  ]) {
+    response.cookies.set({
+      name,
+      value: '',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
   }
+  return response;
 }
