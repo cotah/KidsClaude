@@ -11,7 +11,29 @@ import { BadgeWall } from '@/components/parent/badge-wall';
 import { UsageChart } from '@/components/parent/usage-chart';
 import { serverApiClient } from '@/lib/api/server';
 import { config } from '@/lib/config';
+import { calculateLevelInfo, getLevelFloor } from '@/lib/utils';
 import type { Child, LessonProgress, ChildBadge, DailyUsage } from '@/types/api';
+
+// Shapes brutos vindos do backend FastAPI (envelopes + nomes de campo).
+interface ProgressEnvelope {
+  progress?: LessonProgress[];
+}
+interface BadgesEnvelope {
+  badges?: Array<{
+    id: string;
+    code: string;
+    name: string;
+    description: string;
+    icon: string;
+    awarded_at: string | null;
+  }>;
+}
+interface UsageEnvelope {
+  usage?: Array<{
+    date: string;
+    minutes_used: number;
+  }>;
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -20,29 +42,54 @@ interface PageProps {
 /**
  * Página de detalhes de um filho.
  * Mostra overview, progresso, badges e gráficos de uso.
+ *
+ * Server Component: chama o backend FastAPI direto via serverApiClient,
+ * desempacota envelopes ({progress|badges|usage}) e adapta os nomes de
+ * campo ao formato esperado pelos componentes filho (ChildBadge, DailyUsage).
  */
 export default async function ChildDetailPage({ params }: PageProps) {
   const { id } = await params;
 
   // Buscar dados em paralelo
-  const [child, progress, badges, usage] = await Promise.all([
+  const [child, progressRaw, badgesRaw, usageRaw] = await Promise.all([
     serverApiClient.get<Child>(`children/${id}`),
-    serverApiClient.get<LessonProgress[]>(`children/${id}/progress`),
-    serverApiClient.get<ChildBadge[]>(`children/${id}/badges`),
-    serverApiClient.get<DailyUsage[]>(`children/${id}/usage?days=30`),
+    serverApiClient.get<ProgressEnvelope>(`children/${id}/progress`),
+    serverApiClient.get<BadgesEnvelope>(`children/${id}/badges`),
+    serverApiClient.get<UsageEnvelope>(`children/${id}/usage?days=30`),
   ]);
 
-  // Calcular estatísticas
-  const completedLessons = progress.filter(p => p.status === 'completed').length;
+  // Desempacota e adapta para os tipos que os componentes consomem.
+  const progress: LessonProgress[] = progressRaw?.progress ?? [];
+
+  const badges: ChildBadge[] = (badgesRaw?.badges ?? []).map((b) => ({
+    id: b.id,
+    child_id: id,
+    badge_id: b.id,
+    badge_code: b.code,
+    badge_name: b.name,
+    badge_description: b.description,
+    badge_icon: b.icon,
+    awarded_at: b.awarded_at ?? '',
+  }));
+
+  const usage: DailyUsage[] = (usageRaw?.usage ?? []).map((u) => ({
+    child_id: id,
+    usage_date: u.date,
+    minutes_used: u.minutes_used,
+  }));
+
+  // Estatisticas - matematica de nivel via helper (xpPerLevel direto da config
+  // gera floors errados para nivel 1; calculateLevelInfo respeita o backend).
+  const completedLessons = progress.filter((p) => p.status === 'completed').length;
   const totalXp = child.xp;
   const currentLevel = child.level;
-  const nextLevelXp = config.gamification.xpPerLevel(currentLevel + 1);
-  const currentLevelXp = config.gamification.xpPerLevel(currentLevel);
-  const progressToNextLevel = ((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100;
+  const levelInfo = calculateLevelInfo(totalXp);
+  const progressToNextLevel = levelInfo.progress_percent;
+  const nextLevelXp = getLevelFloor(currentLevel + 1);
 
-  const todayUsage = usage.find(u =>
-    new Date(u.usage_date).toDateString() === new Date().toDateString()
-  )?.minutes_used || 0;
+  const todayIso = new Date().toISOString().split('T')[0];
+  const todayUsage =
+    usage.find((u) => u.usage_date === todayIso)?.minutes_used ?? 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
