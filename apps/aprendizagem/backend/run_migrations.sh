@@ -62,4 +62,20 @@ else
     echo "[migrate] 004 already applied (final exam exists), skipping"
 fi
 
+# Gate 005: novo curriculo (16 licoes nas stages 1-4). Detectamos via slug
+# canonico 's1-o-que-e-ia' que so' aparece nesse seed; se ele existe, 005
+# ja foi aplicado e podemos pular.
+HAS_NEW_CURRICULUM=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-e-ia');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$HAS_NEW_CURRICULUM" ] || [ "$HAS_NEW_CURRICULUM" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 005..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 005_new_curriculum.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/005_new_curriculum.sql
+    echo "[migrate] 005 done"
+else
+    echo "[migrate] 005 already applied (new curriculum slug present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
