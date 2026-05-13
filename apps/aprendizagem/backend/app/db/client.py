@@ -4,6 +4,7 @@ Cliente do banco de dados.
 - Cliente Supabase ainda usado para Auth (Supabase Auth para os pais).
 """
 
+import json
 import os
 import asyncpg
 from typing import AsyncGenerator
@@ -19,16 +20,38 @@ supabase: Client = create_client(
 
 async def _setup_connection(conn: asyncpg.Connection) -> None:
     """
-    Hook chamado em cada nova conexao do pool. Registra um codec custom
-    para UUID que retorna `str` em vez de `uuid.UUID`. Sem isso, schemas
-    Pydantic com `id: str` recebem objeto UUID e estouram ValidationError
-    (Pydantic 2 nao coage UUID -> str automaticamente em modo strict),
-    quebrando endpoints como GET /v1/auth/parent/me com 500.
+    Hook chamado em cada nova conexao do pool. Registra dois codecs:
+
+    1) UUID -> str: sem isso, asyncpg devolve uuid.UUID e Pydantic 2
+       (modo strict) rejeita schemas com `id: str`, gerando 500 em
+       endpoints como GET /v1/auth/parent/me.
+
+    2) JSONB <-> dict/list (via json.dumps/json.loads): por default
+       asyncpg trata JSONB como texto bruto, entao colunas como
+       lessons.content_blocks vinham como string e ContentBlock(**str)
+       estourava TypeError. Com este codec, JSONB e' (de)serializado
+       automaticamente em ambas as direcoes, cobrindo todas as rotas
+       que tocam content_blocks, question, correct_answer, slots,
+       safety_events.details e similares.
     """
     await conn.set_type_codec(
         "uuid",
         encoder=str,
         decoder=str,
+        schema="pg_catalog",
+        format="text",
+    )
+    await conn.set_type_codec(
+        "jsonb",
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema="pg_catalog",
+        format="text",
+    )
+    await conn.set_type_codec(
+        "json",
+        encoder=json.dumps,
+        decoder=json.loads,
         schema="pg_catalog",
         format="text",
     )
