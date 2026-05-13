@@ -28,7 +28,15 @@ ALTER TABLE lessons
   ADD COLUMN IF NOT EXISTS claude_model TEXT NOT NULL
     DEFAULT 'claude-haiku-4-5-20251001';
 
--- Drop old age_band constraints and add new 4-stage constraints
+-- Drop old age_band constraints e migra valores legados ANTES de adicionar
+-- as novas constraints. Sem este UPDATE, qualquer linha pre-existente com
+-- age_band='9-12' (do seed antigo 002) viola a nova constraint e a
+-- migracao 003 inteira aborta com:
+--   ERROR: check constraint lessons_age_band_check violated by some row
+-- Mapeamos 9-12 -> 9-10 como aproximacao razoavel; as linhas serao
+-- apagadas em seguida pelo 004 (seed novo) entao o mapeamento exato
+-- nao importa, so' precisa passar o CHECK.
+
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.check_constraints
@@ -38,6 +46,7 @@ BEGIN
     END IF;
 END
 $$;
+UPDATE lessons SET age_band = '9-10' WHERE age_band = '9-12';
 ALTER TABLE lessons
   ADD CONSTRAINT lessons_age_band_check
   CHECK (age_band IN ('6-8','9-10','11-12','12+'));
@@ -52,6 +61,7 @@ BEGIN
     END IF;
 END
 $$;
+UPDATE prompt_templates SET age_band = '9-10' WHERE age_band = '9-12';
 ALTER TABLE prompt_templates
   ADD CONSTRAINT prompt_templates_age_band_check
   CHECK (age_band IN ('6-8','9-10','11-12','12+'));
