@@ -58,17 +58,35 @@ class AuthContext:
 
 
 async def get_current_user_parent(
-    authorization: Annotated[str | None, Header()] = None
+    authorization: Annotated[str | None, Header()] = None,
+    db = Depends(get_db_client),
 ) -> AuthContext:
     """
-    Dependency: verifica JWT de pai (Supabase).
-    Usado em rotas que exigem autenticação de responsável.
+    Dependency: verifica JWT de pai (Supabase) E garante que o registro
+    do pai exista na tabela local `parents` (auto-heal).
+
+    Sem o auto-heal, qualquer pai que se cadastrou via Supabase mas nao
+    chegou a inserir no DB local quebra todas as rotas que dependem da
+    FK parent_id (POST /v1/children, GET /v1/auth/parent/me, etc).
+    O UPSERT com ON CONFLICT DO NOTHING e' barato e idempotente.
     """
     try:
         token = extract_bearer_token(authorization)
         payload = verify_supabase_jwt(token)
 
         user_id = payload["sub"]
+        email = payload.get("email") or ""
+
+        # Auto-heal: cria registro local se ainda nao existir.
+        await db.execute_non_query(
+            """
+            INSERT INTO parents (id, email, display_name)
+            VALUES ($1, $2, NULL)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            user_id, email,
+        )
+
         return AuthContext(user_id=user_id, role="parent", raw_payload=payload)
 
     except AuthError as e:
@@ -104,11 +122,13 @@ async def get_current_user_child(
 
 
 async def get_current_user_any(
-    authorization: Annotated[str | None, Header()] = None
+    authorization: Annotated[str | None, Header()] = None,
+    db = Depends(get_db_client),
 ) -> AuthContext:
     """
     Dependency: aceita JWT de pai OU criança.
     Usado em rotas que podem ser acessadas por ambos (ex: GET /lessons).
+    Aplica o mesmo auto-heal de parents quando o token e' de pai.
     """
     try:
         token = extract_bearer_token(authorization)
@@ -116,7 +136,17 @@ async def get_current_user_any(
         # Tenta primeiro como parent, depois como child
         try:
             payload = verify_supabase_jwt(token)
-            return AuthContext(user_id=payload["sub"], role="parent", raw_payload=payload)
+            user_id = payload["sub"]
+            email = payload.get("email") or ""
+            await db.execute_non_query(
+                """
+                INSERT INTO parents (id, email, display_name)
+                VALUES ($1, $2, NULL)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                user_id, email,
+            )
+            return AuthContext(user_id=user_id, role="parent", raw_payload=payload)
         except AuthError:
             # Se falhar como parent, tenta como child
             payload = verify_child_jwt(token)

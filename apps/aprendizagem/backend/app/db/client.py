@@ -17,6 +17,23 @@ supabase: Client = create_client(
 )
 
 
+async def _setup_connection(conn: asyncpg.Connection) -> None:
+    """
+    Hook chamado em cada nova conexao do pool. Registra um codec custom
+    para UUID que retorna `str` em vez de `uuid.UUID`. Sem isso, schemas
+    Pydantic com `id: str` recebem objeto UUID e estouram ValidationError
+    (Pydantic 2 nao coage UUID -> str automaticamente em modo strict),
+    quebrando endpoints como GET /v1/auth/parent/me com 500.
+    """
+    await conn.set_type_codec(
+        "uuid",
+        encoder=str,
+        decoder=str,
+        schema="pg_catalog",
+        format="text",
+    )
+
+
 class DatabaseClient:
     """Wrapper para operações de banco com connection pooling."""
 
@@ -39,6 +56,7 @@ class DatabaseClient:
                 min_size=2,
                 max_size=10,
                 command_timeout=30,
+                init=_setup_connection,
             )
 
     async def close_pool(self):
