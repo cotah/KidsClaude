@@ -32,7 +32,8 @@ async def list_children(auth: AnyAuth, db: DBClient):
         if auth.is_parent:
             children_data = await db.execute_query("""
                 SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                       level, xp, streak_days, last_active_date, created_at
+                       level, xp, streak_days, last_active_date, created_at,
+                       (pin_hash IS NOT NULL) AS pin_set
                 FROM children
                 WHERE parent_id = $1
                 ORDER BY created_at ASC
@@ -40,7 +41,8 @@ async def list_children(auth: AnyAuth, db: DBClient):
         else:  # crianca - retorna so' o proprio registro
             children_data = await db.execute_query("""
                 SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                       level, xp, streak_days, last_active_date, created_at
+                       level, xp, streak_days, last_active_date, created_at,
+                       (pin_hash IS NOT NULL) AS pin_set
                 FROM children
                 WHERE id = $1
             """, auth.user_id)
@@ -82,7 +84,8 @@ async def create_child(request: ChildCreateRequest, auth: ParentAuth, db: DBClie
             INSERT INTO children (parent_id, name, age, avatar_id, pin_hash, daily_limit_minutes)
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                      level, xp, streak_days, last_active_date, created_at
+                      level, xp, streak_days, last_active_date, created_at,
+                      (pin_hash IS NOT NULL) AS pin_set
         """, auth.user_id, request.name, request.age, request.avatar_id,
              pin_hash, request.daily_limit_minutes)
 
@@ -106,7 +109,8 @@ async def get_child(child_id: str, auth: ParentAuth, db: DBClient):
     try:
         child_data = await db.execute_query("""
             SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                   level, xp, streak_days, last_active_date, created_at
+                   level, xp, streak_days, last_active_date, created_at,
+                       (pin_hash IS NOT NULL) AS pin_set
             FROM children
             WHERE id = $1 AND parent_id = $2
         """, child_id, auth.user_id)
@@ -188,7 +192,8 @@ async def update_child(child_id: str, request: ChildUpdateRequest, auth: ParentA
             SET {', '.join(update_fields)}
             WHERE id = ${param_count} AND parent_id = ${param_count + 1}
             RETURNING id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                      level, xp, streak_days, last_active_date, created_at
+                      level, xp, streak_days, last_active_date, created_at,
+                      (pin_hash IS NOT NULL) AS pin_set
         """
 
         result = await db.execute_query(query, *params)

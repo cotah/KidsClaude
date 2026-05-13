@@ -36,10 +36,13 @@ export const lessonsApi = {
   },
 
   // Progresso de licoes - backend expoe em GET /v1/children/{id}/progress.
-  // Aceita id "me" para resolver via dependencia de auth quando dispoivel,
-  // mas o caminho canonico exige o child id concreto da sessao.
+  // Backend retorna envelope { progress: [...] }; extraimos o array para
+  // que o consumer possa fazer .find/.filter/.length sem .progress.find.
   async getProgress(childId: string): Promise<LessonProgress[]> {
-    return apiClient.get(`children/${childId}/progress`);
+    const res = await apiClient.get<{ progress?: LessonProgress[] }>(
+      `children/${childId}/progress`
+    );
+    return res?.progress ?? [];
   },
 };
 

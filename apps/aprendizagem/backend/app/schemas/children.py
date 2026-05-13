@@ -45,6 +45,9 @@ class ChildResponse(BaseModel):
     streak_days: int
     last_active_date: Optional[date]
     created_at: datetime
+    # Indica se a crianca tem PIN configurado (hash nunca volta para o cliente).
+    # Frontend usa para decidir se mostra o keypad ou faz auto-login.
+    pin_set: bool = False
 
     class Config:
         from_attributes = True

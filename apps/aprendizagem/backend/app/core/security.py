@@ -9,7 +9,6 @@ import structlog
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from fastapi import HTTPException, status
-from passlib.context import CryptContext
 from jwt import PyJWKClient
 
 from app.core.config import settings
@@ -37,8 +36,11 @@ def _get_jwks_client() -> PyJWKClient:
         logger.info("JWKS client initialized", url=jwks_url)
     return _jwks_client
 
-# Context para hashing de passwords (PINs)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Bcrypt direto (sem passlib). passlib 1.7.4 explode com bcrypt 4.x:
+# "module 'bcrypt' has no attribute '__about__'" porque a 4.x removeu
+# esse atributo e passlib usa para detectar versao. Como so' precisamos
+# hash + verify de um PIN curto, bcrypt nativo cobre sem passlib.
+_BCRYPT_ROUNDS = 10  # custo razoavel para um PIN de 4 digitos
 
 
 class AuthError(HTTPException):
@@ -52,16 +54,17 @@ class AuthError(HTTPException):
 
 
 def hash_pin(pin: str) -> str:
-    """
-    Gera hash bcrypt de um PIN de 4 dígitos.
-    Cost factor 10 é suficiente para PINs.
-    """
-    return pwd_context.hash(pin)
+    """Gera hash bcrypt de um PIN de 4 digitos. Cost 10 e' suficiente."""
+    salt = bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)
+    return bcrypt.hashpw(pin.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_pin(pin: str, hashed: str) -> bool:
-    """Verifica PIN contra hash bcrypt."""
-    return pwd_context.verify(pin, hashed)
+    """Verifica PIN contra hash bcrypt. Retorna False se hash invalido."""
+    try:
+        return bcrypt.checkpw(pin.encode("utf-8"), hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 def verify_supabase_jwt(token: str) -> Dict[str, Any]:

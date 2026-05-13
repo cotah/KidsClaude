@@ -281,7 +281,9 @@ function LessonCard({ lesson, progress, ageGroup }: LessonCardProps) {
             </span>
           </div>
           <div className="text-kid-sm text-gray-500">
-            {lesson.content_blocks.length} partes
+            {/* O endpoint /lessons (lista) nao traz content_blocks; */}
+            {/* so' o /lessons/:id (detalhe) traz. Defensivo com ?. */}
+            {lesson.content_blocks?.length ?? 0} partes
           </div>
         </div>
 
