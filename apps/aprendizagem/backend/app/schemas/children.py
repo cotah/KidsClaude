@@ -9,7 +9,7 @@ from datetime import date, datetime
 
 class ChildCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=30)
-    age: int = Field(..., ge=6, le=12)
+    age: int = Field(..., ge=6, le=16)
     avatar_id: str = Field(..., min_length=1)
     pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
     daily_limit_minutes: Optional[int] = Field(30, ge=5, le=180)
@@ -22,7 +22,7 @@ class ChildCreateRequest(BaseModel):
 
 class ChildUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=30)
-    age: Optional[int] = Field(None, ge=6, le=12)
+    age: Optional[int] = Field(None, ge=6, le=16)
     avatar_id: Optional[str] = None
     pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
     daily_limit_minutes: Optional[int] = Field(None, ge=5, le=180)
@@ -78,6 +78,7 @@ class LessonCompleteResponse(BaseModel):
     xp_total: int
     level: int
     badges_unlocked: List[BadgeInfo]
+    stage_unlocked: Optional[int] = None
 
 
 class DashboardChildCard(BaseModel):

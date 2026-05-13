@@ -47,12 +47,15 @@ if original_create_client:
 @pytest.fixture(autouse=True)
 async def mock_database_operations():
     """Mock database operations to avoid real DB connections in tests."""
+    # passlib.pwd_context foi removido quando trocamos para bcrypt direto.
+    # Patchamos hash_pin / verify_pin no proprio modulo security em vez de
+    # tentar acessar atributos legados que estouravam AttributeError.
     with patch('app.db.client.init_database', new_callable=AsyncMock) as mock_init, \
          patch('app.db.client.close_database', new_callable=AsyncMock) as mock_close, \
          patch('app.db.client.DatabaseClient.init_pool', new_callable=AsyncMock) as mock_pool_init, \
          patch('app.db.client.DatabaseClient.close_pool', new_callable=AsyncMock) as mock_pool_close, \
-         patch('app.core.security.pwd_context.hash') as mock_hash, \
-         patch('app.core.security.pwd_context.verify') as mock_verify:
+         patch('app.core.security.hash_pin') as mock_hash, \
+         patch('app.core.security.verify_pin') as mock_verify:
 
         # Setup simple hash/verify mocks for testing with randomness
         import random

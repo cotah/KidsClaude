@@ -30,10 +30,27 @@ export default function LessonPage() {
   // Marcar lição como iniciada
   const startLessonMutation = useMutation({
     mutationFn: () => lessonsApi.start(lessonId),
+    onError: (error: any) => {
+      // Se lição estiver bloqueada (403 LESSON_LOCKED), redirecionar
+      if (error?.response?.status === 403) {
+        const stageId = lesson?.stage;
+        if (stageId) {
+          router.push(`/play/stage/${stageId}` as any);
+        } else {
+          router.push('/play');
+        }
+      }
+    },
   });
 
   useEffect(() => {
     if (lesson) {
+      // Check se a lição está bloqueada no frontend primeiro
+      if (lesson.is_locked) {
+        const stageId = lesson.stage;
+        router.push(`/play/stage/${stageId}` as any);
+        return;
+      }
       startLessonMutation.mutate();
     }
   }, [lesson]);

@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.dependencies import limiter
 from app.db.client import init_database, close_database
-from app.api import auth, children, lessons, chat, parents, health
+from app.api import auth, children, lessons, chat, parents, health, exam, stages
 # Importes para registrar endpoints nas rotas spec-corretas (corrige prefixos)
 from app.api.chat import usage_heartbeat, list_child_sessions
 from app.api.lessons import attempt_challenge
@@ -174,6 +174,19 @@ app.include_router(
     prefix="/v1",
     tags=["Sistema"]
 )
+
+app.include_router(
+    exam.router,
+    prefix="/v1/exam",
+    tags=["Exame Final"]
+)
+
+app.include_router(
+    stages.router,
+    prefix="/v1/stages",
+    tags=["Stages"]
+)
+
 
 # Rotas adicionais nos caminhos exigidos pela spec (secoes 7.4, 7.5, 7.7).
 # Os handlers continuam em chat.py / lessons.py; apenas registramos aliases

@@ -1,5 +1,5 @@
-// Tipos específicos da aplicação frontend
-export type AgeGroup = '6-8' | '9-12';
+// Tipos específicos da aplicação frontend - agora com 4 age bands conforme curriculum redesign
+export type AgeGroup = '6-8' | '9-10' | '11-12' | '12+';
 
 export interface Avatar {
   id: string;

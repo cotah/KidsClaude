@@ -144,7 +144,7 @@ async def send_message(
         # Verifica se sessão pertence à criança
         session_data = await db.execute_query("""
             SELECT s.id, s.child_id, s.lesson_id, s.safety_status, s.message_count,
-                   l.title, l.description, c.age
+                   l.title, l.description, l.claude_model, c.age
             FROM chat_sessions s
             JOIN lessons l ON s.lesson_id = l.id
             JOIN children c ON s.child_id = c.id
@@ -229,7 +229,8 @@ async def send_message(
                 message=message_content,
                 lesson_title=session['title'],
                 lesson_summary=session['description'],
-                child_age=session['age']
+                child_age=session['age'],
+                claude_model=session['claude_model']
             )
         except Exception as e:
             logger.error("Erro na chamada Claude", error=str(e))

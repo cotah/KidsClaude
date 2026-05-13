@@ -21,6 +21,9 @@ class LessonListItem(BaseModel):
     description: str
     xp_reward: int
     order_index: int
+    stage: int
+    is_final_exam: bool
+    claude_model: str
     is_locked: bool = False
     prerequisites: List[str] = []
 
@@ -51,6 +54,9 @@ class LessonDetail(BaseModel):
     description: str
     age_band: str
     order_index: int
+    stage: int
+    is_final_exam: bool
+    claude_model: str
     content_blocks: List[ContentBlock]
     prerequisites: List[str]
     xp_reward: int
@@ -74,3 +80,52 @@ class ChallengeAttemptResponse(BaseModel):
     is_correct: bool
     xp_earned: int
     correct_answer: Optional[Dict[str, Any]] = None
+
+
+class StageInfo(BaseModel):
+    stage: int
+    name: str
+    description: str
+    age_band_label: str
+    difficulty: str
+    is_unlocked: bool
+    lessons_total: int
+    lessons_completed: int
+    is_completed: bool
+
+
+class FinalExamInfo(BaseModel):
+    lesson_id: str
+    is_unlocked: bool
+    is_completed: bool
+    label: str
+    claude_model: str
+
+
+class StagesResponse(BaseModel):
+    stages: List[StageInfo]
+    final_exam: FinalExamInfo
+
+
+class ExamStartResponse(BaseModel):
+    session_id: str
+    started_at: datetime
+    lesson_id: str
+
+
+class ExamMessageRequest(BaseModel):
+    content: str
+
+
+class ExamMessageResponse(BaseModel):
+    message_id: str
+    assistant_message: Dict[str, Any]
+    current_step: int
+    is_complete: bool
+
+
+class ExamSubmitResponse(BaseModel):
+    xp_earned: int
+    badges_unlocked: List[str]
+    summary: str
+    plan: Dict[str, Any]

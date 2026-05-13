@@ -110,10 +110,13 @@ export function calculateLevelInfo(xp: number): LevelInfo {
 }
 
 /**
- * Obter faixa etária baseada na idade
+ * Obter faixa etária baseada na idade - agora com 4 bandas conforme curriculum redesign
  */
 export function getAgeGroup(age: number): AgeGroup {
-  return age <= 8 ? '6-8' : '9-12';
+  if (age <= 8) return '6-8';
+  if (age <= 10) return '9-10';
+  if (age <= 12) return '11-12';
+  return '12+';
 }
 
 /**
@@ -210,7 +213,13 @@ export function truncateText(text: string, maxLength: number): string {
  */
 export function getAgeGroupColor(age: number): string {
   const ageGroup = getAgeGroup(age);
-  return ageGroup === '6-8' ? 'sunny' : 'ocean';
+  switch (ageGroup) {
+    case '6-8': return 'sunny';
+    case '9-10': return 'ocean';
+    case '11-12': return 'mint';
+    case '12+': return 'sunset';
+    default: return 'sunny';
+  }
 }
 
 /**
@@ -239,10 +248,11 @@ export function isTouchDevice(): boolean {
  */
 export function getAgeGroupClasses(age: number) {
   const ageGroup = getAgeGroup(age);
+  const isYoungKid = ageGroup === '6-8';
   return {
-    text: ageGroup === '6-8' ? 'age-6-8' : 'age-9-12',
-    button: ageGroup === '6-8' ? 'kid-button-lg' : 'kid-button',
-    spacing: ageGroup === '6-8' ? 'space-y-8' : 'space-y-6',
-    container: ageGroup === '6-8' ? 'p-8' : 'p-6',
+    text: isYoungKid ? 'age-6-8' : 'age-9-12',
+    button: isYoungKid ? 'kid-button-lg' : 'kid-button',
+    spacing: isYoungKid ? 'space-y-8' : 'space-y-6',
+    container: isYoungKid ? 'p-8' : 'p-6',
   };
 }

@@ -88,6 +88,32 @@ export interface UpdateChildRequest {
   daily_limit_minutes?: number;
 }
 
+// Stages
+export interface Stage {
+  stage: number;
+  name: string;
+  description: string;
+  age_band_label: string;
+  difficulty: string;
+  is_unlocked: boolean;
+  lessons_total: number;
+  lessons_completed: number;
+  is_completed: boolean;
+}
+
+export interface FinalExam {
+  lesson_id: string;
+  is_unlocked: boolean;
+  is_completed: boolean;
+  label: string;
+  claude_model: string;
+}
+
+export interface StagesResponse {
+  stages: Stage[];
+  final_exam: FinalExam;
+}
+
 // Lessons
 export interface ContentBlock {
   type: 'text' | 'image' | 'video' | 'animation';
@@ -100,7 +126,10 @@ export interface Lesson {
   slug: string;
   title: string;
   description: string;
-  age_band: '6-8' | '9-12';
+  age_band: '6-8' | '9-10' | '11-12' | '12+';
+  stage: number;
+  is_final_exam: boolean;
+  claude_model: string;
   order_index: number;
   content_blocks: ContentBlock[];
   prerequisites: string[];
@@ -124,6 +153,7 @@ export interface LessonCompletionResponse {
   xp_total: number;
   level: number;
   badges_unlocked: Badge[];
+  stage_unlocked?: number;
 }
 
 // Challenges
@@ -157,7 +187,7 @@ export interface PromptTemplate {
     max_length: number;
     allowed_chars: string;
   }>;
-  age_band: '6-8' | '9-12';
+  age_band: '6-8' | '9-10' | '11-12' | '12+';
   order_index: number;
 }
 
@@ -203,6 +233,39 @@ export interface SendMessageResponse {
   assistant_message: {
     content: string;
     moderation_status: 'passed' | 'blocked';
+  };
+}
+
+// Exam (Final Capstone)
+export interface ExamSession {
+  session_id: string;
+  started_at: string;
+  lesson_id: string;
+}
+
+export interface ExamMessageRequest {
+  content: string;
+}
+
+export interface ExamMessageResponse {
+  message_id: string;
+  assistant_message: {
+    content: string;
+  };
+  current_step: number;
+  is_complete: boolean;
+}
+
+export interface ExamSubmitResponse {
+  xp_earned: number;
+  badges_unlocked: string[];
+  summary: string;
+  plan: {
+    problem: string;
+    users: string;
+    features: string;
+    screen: string;
+    first_step: string;
   };
 }
 

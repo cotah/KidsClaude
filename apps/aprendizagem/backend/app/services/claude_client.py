@@ -52,7 +52,8 @@ Idade da criança: {child_age} anos"""
         lesson_title: str,
         lesson_summary: str,
         child_age: int,
-        conversation_history: List[MessageParam] = None
+        conversation_history: List[MessageParam] = None,
+        claude_model: str = None
     ) -> str:
         """
         Envia mensagem para Claude com contexto de criança.
@@ -70,8 +71,11 @@ Idade da criança: {child_age} anos"""
                 "type": "ephemeral"
             }
 
+            # Usa modelo da lição ou padrão
+            model_to_use = claude_model or self.model
+
             response = await self.client.messages.create(
-                model=self.model,
+                model=model_to_use,
                 max_tokens=200,  # Respostas curtas para crianças
                 temperature=0.7,  # Criatividade moderada
                 system=system_prompt,

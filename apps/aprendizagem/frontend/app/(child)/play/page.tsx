@@ -3,39 +3,27 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { lessonsApi } from '@/lib/api';
-import { KidCard } from '@/components/ui/card';
+import { stagesApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { XPProgress, StreakProgress } from '@/components/ui/progress';
 import { Mascot, MascotBubble } from '@/components/ui/mascot-bubble';
+import { StageGrid } from '@/components/ui/stage-grid';
 import useAppStore from '@/lib/store/app-store';
-import { calculateLevelInfo, getAgeGroup, formatTimeForKids } from '@/lib/utils';
-import type { Lesson } from '@/types/api';
+import { calculateLevelInfo } from '@/lib/utils';
 
 /**
- * Hub principal da criança - conforme spec seção 8.3
+ * Hub principal da criança - agora com 4-stage curriculum conforme spec redesign seção 7.1
  */
 export default function PlayPage() {
   const { currentChild } = useAppStore();
   const [greeting, setGreeting] = React.useState('');
 
-  // Buscar lições disponíveis para a faixa etária
-  const { data: lessons, isLoading: isLoadingLessons } = useQuery({
-    queryKey: ['lessons', currentChild?.age],
-    queryFn: () => {
-      if (!currentChild) return [];
-      const ageGroup = getAgeGroup(currentChild.age);
-      return lessonsApi.list(ageGroup);
-    },
+  // Buscar stages e progresso
+  const { data: stagesData, isLoading: isLoadingStages } = useQuery({
+    queryKey: ['stages', currentChild?.id],
+    queryFn: () => stagesApi.getStages(),
     enabled: !!currentChild,
-  });
-
-  // Buscar progresso da crianca usando o id da sessao corrente
-  const { data: progress } = useQuery({
-    queryKey: ['child-progress', currentChild?.id],
-    queryFn: () => lessonsApi.getProgress(currentChild!.id),
-    enabled: !!currentChild,
+    staleTime: 30000, // 30s cache para refletir progresso
   });
 
   React.useEffect(() => {
@@ -68,7 +56,6 @@ export default function PlayPage() {
   }
 
   const levelInfo = calculateLevelInfo(currentChild.xp);
-  const ageGroup = getAgeGroup(currentChild.age);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100">
@@ -135,36 +122,37 @@ export default function PlayPage() {
           </MascotBubble>
         </section>
 
-        {/* Lições disponíveis */}
+        {/* Stages Grid */}
         <section className="space-y-6">
           <div className="text-center">
             <h2 className="text-kid-2xl font-bold text-gray-800 mb-2">
-              Suas Lições
+              Seu Caminho de Aprendizado
             </h2>
             <p className="text-kid-base text-gray-600">
-              Escolha uma lição para continuar aprendendo!
+              Complete as 4 stages e desbloqueie o projeto final!
             </p>
           </div>
 
-          {isLoadingLessons ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="h-48 rounded-kid-lg bg-gray-200 animate-pulse"
-                />
-              ))}
+          {isLoadingStages ? (
+            <div className="space-y-8">
+              {/* Mock das 4 stages + final exam */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-56 rounded-kid-lg bg-gray-200 animate-pulse"
+                  />
+                ))}
+              </div>
+              <div className="flex justify-center">
+                <div className="w-full max-w-md h-48 rounded-kid-lg bg-gradient-to-br from-purple-200 to-yellow-200 animate-pulse" />
+              </div>
             </div>
+          ) : stagesData ? (
+            <StageGrid stagesData={stagesData} />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {lessons?.map((lesson) => (
-                <LessonCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  progress={progress?.find(p => p.lesson_id === lesson.id)}
-                  ageGroup={ageGroup}
-                />
-              ))}
+            <div className="text-center text-gray-500">
+              <p>Não foi possível carregar as stages. Tente novamente.</p>
             </div>
           )}
         </section>
@@ -189,119 +177,3 @@ export default function PlayPage() {
   );
 }
 
-interface LessonCardProps {
-  lesson: Lesson;
-  progress?: any;
-  ageGroup: '6-8' | '9-12';
-}
-
-function LessonCard({ lesson, progress, ageGroup }: LessonCardProps) {
-  const getStatusInfo = () => {
-    if (!progress) {
-      return {
-        status: 'not_started',
-        badge: 'Novo',
-        color: 'secondary',
-        action: 'Começar',
-        variant: 'sunny',
-      };
-    }
-
-    switch (progress.status) {
-      case 'in_progress':
-        return {
-          status: 'in_progress',
-          badge: 'Começou',
-          color: 'warning',
-          action: 'Continuar',
-          variant: 'ocean',
-        };
-      case 'completed':
-        return {
-          status: 'completed',
-          badge: 'Concluído',
-          color: 'success',
-          action: 'Revisar',
-          variant: 'mint',
-        };
-      default:
-        return {
-          status: 'not_started',
-          badge: 'Novo',
-          color: 'secondary',
-          action: 'Começar',
-          variant: 'sunny',
-        };
-    }
-  };
-
-  const statusInfo = getStatusInfo();
-
-  return (
-    <KidCard
-      colorScheme={statusInfo.variant as any}
-      className={cn(
-        'relative overflow-hidden transition-all duration-200 hover:scale-105',
-        lesson.is_locked && 'opacity-50 cursor-not-allowed'
-      )}
-    >
-      <div className="p-6 space-y-4">
-        {/* Badge de status */}
-        <div className="flex justify-between items-start">
-          <Badge variant={statusInfo.color as any} size="kid">
-            {statusInfo.badge}
-          </Badge>
-          {lesson.is_locked && (
-            <div className="text-2xl">🔒</div>
-          )}
-        </div>
-
-        {/* Conteúdo da lição */}
-        <div className="space-y-2">
-          <h3 className={cn(
-            'font-bold text-gray-800 line-clamp-2',
-            ageGroup === '6-8' ? 'text-kid-lg' : 'text-kid-base'
-          )}>
-            {lesson.title}
-          </h3>
-          <p className={cn(
-            'text-gray-600 line-clamp-3',
-            ageGroup === '6-8' ? 'text-kid-base' : 'text-kid-sm'
-          )}>
-            {lesson.description}
-          </p>
-        </div>
-
-        {/* Info de XP */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-1 text-sunny-600">
-            <span>⭐</span>
-            <span className="text-kid-sm font-medium">
-              +{lesson.xp_reward} XP
-            </span>
-          </div>
-          <div className="text-kid-sm text-gray-500">
-            {/* O endpoint /lessons (lista) nao traz content_blocks; */}
-            {/* so' o /lessons/:id (detalhe) traz. Defensivo com ?. */}
-            {lesson.content_blocks?.length ?? 0} partes
-          </div>
-        </div>
-
-        {/* Botão de ação */}
-        <Button
-          variant={statusInfo.variant as any}
-          size={ageGroup === '6-8' ? 'kid-lg' : 'kid-default'}
-          className="w-full"
-          asChild
-          disabled={lesson.is_locked}
-        >
-          <Link href={`/play/lesson/${lesson.id}`}>
-            {lesson.is_locked ? 'Bloqueado' : statusInfo.action}
-          </Link>
-        </Button>
-      </div>
-    </KidCard>
-  );
-}
-
-import { cn } from '@/lib/utils';

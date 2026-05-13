@@ -37,4 +37,29 @@ else
     echo "[migrate] 002 already applied (lessons=$LESSONS_COUNT), skipping"
 fi
 
+# Gate 003: check if stage column exists on lessons table
+STAGE_COLUMN_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lessons' AND column_name='stage');" | tr -d ' \n')
+
+if [ "$STAGE_COLUMN_EXISTS" = "f" ]; then
+    echo "[migrate] running 003_curriculum_redesign.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/003_curriculum_redesign.sql
+    echo "[migrate] 003 done"
+else
+    echo "[migrate] 003 already applied, skipping"
+fi
+
+# Gate 004: check if any lesson has is_final_exam=true (indicates new curriculum)
+HAS_FINAL_EXAM=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE is_final_exam = true);" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$HAS_FINAL_EXAM" ] || [ "$HAS_FINAL_EXAM" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 004..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 004_curriculum_seed.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/004_curriculum_seed.sql
+    echo "[migrate] 004 done"
+else
+    echo "[migrate] 004 already applied (final exam exists), skipping"
+fi
+
 echo "[migrate] done. starting server..."
