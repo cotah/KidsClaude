@@ -483,7 +483,7 @@ VALUES (
   'CAPSTONE_BUILDER',
   'Construtor Capstone',
   'Completou o Projeto Final do curso',
-  'final_exam_completed',
+  '{"type": "final_exam_completed"}',
   'crown-star'
 ) ON CONFLICT (code) DO NOTHING;
 
