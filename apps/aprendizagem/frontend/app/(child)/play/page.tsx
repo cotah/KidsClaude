@@ -18,8 +18,17 @@ export default function PlayPage() {
   const { currentChild } = useAppStore();
   const [greeting, setGreeting] = React.useState('');
 
-  // Buscar stages e progresso
-  const { data: stagesData, isLoading: isLoadingStages } = useQuery({
+  // Buscar stages e progresso. TanStack Query v5: isPending = sem dados +
+  // ainda buscando; isError + error = falha na request. isLoading e' alias
+  // legado e fica false enquanto enabled=false (currentChild nao hidratou
+  // ainda do Zustand persist), o que deixava o componente cair no else
+  // mostrando branco no primeiro render.
+  const {
+    data: stagesData,
+    isPending: isStagesPending,
+    isError: isStagesError,
+    error: stagesError,
+  } = useQuery({
     queryKey: ['stages', currentChild?.id],
     queryFn: () => stagesApi.getStages(),
     enabled: !!currentChild,
@@ -136,7 +145,20 @@ export default function PlayPage() {
             </p>
           </div>
 
-          {isLoadingStages ? (
+          {/* Ordem do branch: error > pending > sem dados/sem stages > grid.
+              isPending pega tanto o "ainda nao buscou" (enabled=false durante
+              hidratacao do Zustand) quanto o "buscando agora", evitando o
+              flash de branco entre o primeiro render e a chegada dos dados. */}
+          {isStagesError ? (
+            <div className="text-center text-red-600 bg-white/80 rounded-kid-lg p-6">
+              <p className="text-kid-base font-medium mb-2">
+                Não foi possível carregar as stages.
+              </p>
+              <p className="text-kid-sm text-red-500">
+                {stagesError instanceof Error ? stagesError.message : 'Erro desconhecido'}
+              </p>
+            </div>
+          ) : isStagesPending || !stagesData ? (
             <div className="space-y-8">
               {/* Mock das 4 stages + final exam */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -150,13 +172,16 @@ export default function PlayPage() {
               <div className="flex justify-center">
                 <div className="w-full max-w-md h-48 rounded-kid-lg bg-gradient-to-br from-purple-200 to-yellow-200 animate-pulse" />
               </div>
+              <p className="text-center text-kid-sm text-gray-500">Carregando...</p>
             </div>
-          ) : stagesData ? (
-            <StageGrid stagesData={stagesData} />
+          ) : !stagesData.stages || stagesData.stages.length === 0 ? (
+            <div className="text-center text-gray-600 bg-white/60 rounded-kid-lg p-6">
+              <p className="text-kid-base font-medium">
+                Nenhuma stage encontrada — recarregue a página.
+              </p>
+            </div>
           ) : (
-            <div className="text-center text-gray-500">
-              <p>Não foi possível carregar as stages. Tente novamente.</p>
-            </div>
+            <StageGrid stagesData={stagesData} />
           )}
         </section>
 

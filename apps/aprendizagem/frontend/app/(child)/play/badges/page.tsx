@@ -2,13 +2,11 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import type { Route } from 'next';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Mascot, MascotBubble } from '@/components/ui/mascot-bubble';
-import { dashboardApi } from '@/lib/api/dashboard';
 import useAppStore from '@/lib/store/app-store';
 import { cn } from '@/lib/utils';
 
@@ -37,28 +35,20 @@ const BADGE_CATALOG: Array<{
 ];
 
 /**
- * Mural de conquistas. Sobrepoe as badges do catalogo com o que a crianca
- * desbloqueou (vindo do dashboard).
+ * Mural de conquistas. Mostra catalogo completo das 12 badges. A chamada
+ * para dashboardApi.getDashboard foi removida porque ela exige token de
+ * pai e era chamada em sessao de crianca, gerando 401 ruidoso. Quando o
+ * backend tiver endpoint /v1/children/{id}/badges, plugar aqui.
  */
 export default function BadgesPage() {
   const router = useRouter();
-  const { currentChild } = useAppStore();
+  const { currentChild: _currentChild } = useAppStore();
 
-  const { data: dashboard, isLoading } = useQuery({
-    queryKey: ['parents-dashboard'],
-    queryFn: dashboardApi.getDashboard,
-    // Endpoint exige token de pai; em sessao de crianca pode falhar - tudo bem,
-    // a UI degrada mostrando todas como bloqueadas.
-    retry: false,
-  });
-
-  const unlockedCodes = useMemo(() => {
-    if (!dashboard || !currentChild) return new Set<string>();
-    const card = dashboard.children.find((c) => c.id === currentChild.id);
-    return new Set((card?.recent_badges ?? []).map((b) => b.code));
-  }, [dashboard, currentChild]);
-
+  // Sem dashboard call em modo crianca - todas aparecem como bloqueadas
+  // ate' termos endpoint child-aware.
+  const unlockedCodes = useMemo(() => new Set<string>(), []);
   const unlockedCount = unlockedCodes.size;
+  const isLoading = false;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4">

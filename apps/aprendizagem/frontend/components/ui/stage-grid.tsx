@@ -13,6 +13,18 @@ interface StageGridProps {
  * Grid principal do hub de stages - 4 cards de stage + 1 card final exam
  */
 export function StageGrid({ stagesData, className }: StageGridProps) {
+  // Defensivo: se stages nao for array (shape errado), avisa em vez de
+  // renderizar grid vazio que parece blank page.
+  if (!stagesData?.stages || !Array.isArray(stagesData.stages)) {
+    return (
+      <div className="text-center text-gray-600 bg-white/60 rounded-kid-lg p-6">
+        <p className="text-kid-base font-medium">
+          Formato de dados inesperado. Recarregue a página.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       {/* Grid das 4 stages */}
@@ -23,11 +35,13 @@ export function StageGrid({ stagesData, className }: StageGridProps) {
       </div>
 
       {/* Final Exam - destaque especial abaixo das stages */}
-      <div className="flex justify-center">
-        <div className="w-full max-w-md">
-          <FinalExamCard finalExam={stagesData.final_exam} />
+      {stagesData.final_exam && (
+        <div className="flex justify-center">
+          <div className="w-full max-w-md">
+            <FinalExamCard finalExam={stagesData.final_exam} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

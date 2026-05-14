@@ -35,7 +35,10 @@ export function StageCard({ stage, className }: StageCardProps) {
   };
 
   const getColorScheme = () => {
-    if (!stage.is_unlocked) return 'gray';
+    // 'ocean' como neutro pra stage bloqueada - 'gray' nao existe no KidCard
+    // (so 'sunny|ocean|mint|sunset|grape') e devolve undefined nas classes,
+    // deixando o card sem fundo.
+    if (!stage.is_unlocked) return 'ocean';
     if (stage.is_completed) return 'mint';
     return 'sunny';
   };
