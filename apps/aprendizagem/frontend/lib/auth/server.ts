@@ -44,10 +44,30 @@ export async function isChildAuthenticated(): Promise<boolean> {
 }
 
 /**
- * Obtém token ativo (criança tem prioridade se ambos existem).
- * Para uso em API calls no servidor.
+ * Obtém token ativo. PARENT tem prioridade sobre CHILD quando ambos existem
+ * porque a unica server-component que usa este helper hoje vive em rotas
+ * (parent)/* (children/[id]/page.tsx). Antes preferia child, o que causava
+ * 401 silencioso quando o pai navegava com cookie de crianca residual.
+ *
+ * Pra escolher explicitamente, use getParentToken / getChildToken abaixo.
  */
 export async function getActiveToken(): Promise<string | null> {
   const { parentToken, childToken } = await getAuthTokens();
-  return childToken || parentToken || null;
+  return parentToken || childToken || null;
+}
+
+/**
+ * Token do pai apenas. Use em Server Components dentro de (parent)/*.
+ */
+export async function getParentToken(): Promise<string | null> {
+  const { parentToken } = await getAuthTokens();
+  return parentToken ?? null;
+}
+
+/**
+ * Token da crianca apenas. Use em Server Components dentro de (child)/*.
+ */
+export async function getChildToken(): Promise<string | null> {
+  const { childToken } = await getAuthTokens();
+  return childToken ?? null;
 }

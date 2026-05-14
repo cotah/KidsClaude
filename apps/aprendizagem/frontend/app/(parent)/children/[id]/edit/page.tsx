@@ -102,6 +102,8 @@ export default function EditChildPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['children'] });
       queryClient.invalidateQueries({ queryKey: ['child', childId] });
+      // Cards do /dashboard tambem ficam stale quando se edita nome/avatar.
+      queryClient.invalidateQueries({ queryKey: ['parent-dashboard'] });
       toast({ type: 'success', title: 'Alteracoes salvas' });
       router.push(`/children/${childId}` as any);
     },
@@ -118,6 +120,7 @@ export default function EditChildPage() {
     mutationFn: () => childrenApi.delete(childId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['children'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-dashboard'] });
       toast({ type: 'success', title: 'Perfil removido' });
       router.push('/dashboard');
     },

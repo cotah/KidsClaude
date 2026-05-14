@@ -73,7 +73,12 @@ export default function CreateChildPage() {
       return childrenApi.create(payload);
     },
     onSuccess: (newChild) => {
+      // Invalida ambos os caches: 'children' (lista usada em /select) e
+      // 'parent-dashboard' (cards do /dashboard). Sem invalidar o segundo,
+      // o dashboard fica stale e o pai precisa recarregar a pagina pra
+      // ver o filho novo.
       queryClient.invalidateQueries({ queryKey: ['children'] });
+      queryClient.invalidateQueries({ queryKey: ['parent-dashboard'] });
       router.push(`/children/${newChild.id}`);
     },
     onError: (error) => {
