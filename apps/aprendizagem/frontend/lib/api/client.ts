@@ -43,11 +43,13 @@ class ApiClient {
           },
         ],
         afterResponse: [
-          async (_request, _options, response) => {
+          async (request, _options, response) => {
             // 401: sessao expirada/invalida. Limpa cookies via route handler de
-            // auth e redireciona o usuario para a tela apropriada.
+            // auth e redireciona o usuario para a tela apropriada. Passamos o
+            // request URL pra distinguir 401 de "sessao expirada" (rotas
+            // normais) vs 401 de "credencial errada" (endpoints de login).
             if (response.status === 401) {
-              handleUnauthorized();
+              handleUnauthorized(request.url);
             }
             return response;
           },
@@ -95,22 +97,43 @@ class ApiClient {
   }
 }
 
-function handleUnauthorized(): void {
+// Endpoints de auth onde 401 significa "credencial errada", NAO "sessao
+// expirada". Para esses, deixamos a UI mostrar o erro inline em vez de
+// derrubar a sessao e redirecionar - se eu errar a senha do pai, nao
+// quero que a tentativa anterior bem-sucedida da crianca seja apagada.
+const AUTH_ENDPOINT_PATTERNS = [
+  '/auth/parent/login',
+  '/auth/parent/signup',
+  '/auth/child/login', // pega login E login-direct
+  '/auth/parent/password-reset',
+];
+
+function handleUnauthorized(requestUrl?: string): void {
   if (typeof window === 'undefined') return;
+
+  // 401 vindo de endpoint de auth: deixa o caller (UI de login) tratar.
+  if (requestUrl) {
+    for (const pattern of AUTH_ENDPOINT_PATTERNS) {
+      if (requestUrl.includes(pattern)) {
+        console.warn('[apiClient] 401 em endpoint de auth — UI trata inline, sem clearSession.');
+        return;
+      }
+    }
+  }
+
   const currentPath = window.location.pathname;
 
-  // Em rotas de crianca (/play/*) NAO derruba sessao automaticamente em 401.
-  // Um 401 isolado nao deve interromper a experiencia: pode ser um endpoint
-  // que ainda nao aceita child auth, um glitch transitorio, etc. A crianca
-  // so' deve sair via botao de logout explicito ou quando o cookie expirar
-  // (middleware redireciona pra /select no proximo nav). Logamos para debug.
-  if (currentPath.startsWith('/play')) {
-    console.warn('[apiClient] 401 em rota /play — sessao mantida, sem redirect.');
+  // Em rotas de crianca (/play/*, /crianca) NAO derruba sessao automaticamente
+  // em 401. Um 401 isolado pode ser glitch transitorio ou um endpoint que
+  // ainda nao aceita child auth. A crianca so' sai via logout explicito ou
+  // quando o cookie expirar (middleware redireciona pra /select no proximo nav).
+  if (currentPath.startsWith('/play') || currentPath === '/crianca') {
+    console.warn('[apiClient] 401 em rota de crianca — sessao mantida, sem redirect.');
     return;
   }
 
-  // Em rotas do pai mantemos o comportamento original: limpa sessao e
-  // manda pro login. JWT do Supabase pode ter expirado; precisa novo login.
+  // Em rotas do pai: limpa sessao e manda pro login. JWT do Supabase pode
+  // ter expirado; precisa novo login.
   fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {
     // Logout deve sempre prosseguir mesmo se o servidor falhar.
   });

@@ -41,16 +41,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Se é rota de pai, verificar token de pai
+  // Se é rota de pai, verificar token de pai. Cookies de pai e crianca
+  // sao independentes e podem coexistir (ex: pai supervisionando o /play
+  // do filho noutra aba). NAO mexemos no cookie da crianca aqui - o BFF
+  // proxy escolhe o token certo por path/referer (ver
+  // app/api/backend/[...path]/route.ts).
   if (isParentRoute) {
     if (!parentToken) {
       return NextResponse.redirect(new URL('/login', request.url));
-    }
-    // Se criança está logada, fazer logout da criança
-    if (childToken) {
-      const response = NextResponse.next();
-      response.cookies.delete(appConfig.auth.childCookieName);
-      return response;
     }
     return NextResponse.next();
   }

@@ -24,14 +24,81 @@ function getBackendBase(): string {
   return fromPublic.replace(/\/+$/, '');
 }
 
-// Escolhe qual token enviar. Preferencia para o token de crianca quando
-// ambos existem (sessao ativa de play e' mais especifica que sessao do pai).
-async function pickToken(): Promise<string | null> {
+// Endpoints publicos: NUNCA mandam token (mesmo que cookies existam).
+// Evita interferencia entre sessoes em fluxos de signup/login/reset.
+const PUBLIC_ENDPOINTS = new Set<string>([
+  'v1/auth/parent/login',
+  'v1/auth/parent/signup',
+  'v1/auth/parent/password-reset/request',
+  'v1/auth/parent/password-reset/confirm',
+  'v1/auth/child/login-direct',
+  'v1/health',
+]);
+
+// Endpoints que SEMPRE exigem token de pai. Se enviar child token,
+// o backend rejeita 401 e o handleUnauthorized derruba a sessao toda.
+function isParentOnlyPath(path: string): boolean {
+  return (
+    path.startsWith('v1/auth/parent/') ||
+    path.startsWith('v1/parents/') ||
+    path === 'v1/auth/child/login' // crianca via /select: pai autoriza
+  );
+}
+
+// Endpoints que SEMPRE sao de crianca (chat, heartbeat, exam).
+function isChildOnlyPath(path: string): boolean {
+  return (
+    path.startsWith('v1/chat/') ||
+    path.startsWith('v1/exam/') ||
+    path === 'v1/heartbeat'
+  );
+}
+
+// Para endpoints AnyAuth (children/*, lessons/*, stages, etc.) usamos
+// o Referer pra desempate. Pai navegando em /dashboard manda token de
+// pai; crianca em /play manda token de crianca. Sem referer claro,
+// preferimos PARENT (era child antes - causava bug onde pai com cookie
+// residual de crianca recebia 401 em endpoints de pai).
+function tokenFromReferer(referer: string | null, parent: string | null, child: string | null): string | null {
+  if (!referer) return parent ?? child ?? null;
+
+  let refererPath = '';
+  try {
+    refererPath = new URL(referer).pathname;
+  } catch {
+    return parent ?? child ?? null;
+  }
+
+  const isParentContext =
+    refererPath.startsWith('/dashboard') ||
+    refererPath.startsWith('/children') ||
+    refererPath.startsWith('/account') ||
+    refererPath === '/select' ||
+    refererPath.startsWith('/login') ||
+    refererPath.startsWith('/signup');
+
+  const isChildContext =
+    refererPath.startsWith('/play') ||
+    refererPath === '/crianca';
+
+  if (isParentContext) return parent ?? child ?? null;
+  if (isChildContext) return child ?? parent ?? null;
+  return parent ?? child ?? null;
+}
+
+async function pickToken(req: NextRequest, pathSegments: string[]): Promise<string | null> {
   const store = await cookies();
-  const child = store.get(config.auth.childCookieName)?.value;
-  if (child) return child;
-  const parent = store.get(config.auth.parentCookieName)?.value;
-  return parent ?? null;
+  const child = store.get(config.auth.childCookieName)?.value ?? null;
+  const parent = store.get(config.auth.parentCookieName)?.value ?? null;
+
+  const path = pathSegments.join('/');
+
+  if (PUBLIC_ENDPOINTS.has(path)) return null;
+  if (isParentOnlyPath(path)) return parent;
+  if (isChildOnlyPath(path)) return child;
+
+  // AnyAuth: decide pelo contexto da pagina que fez a request.
+  return tokenFromReferer(req.headers.get('referer'), parent, child);
 }
 
 async function forward(req: NextRequest, pathSegments: string[]) {
@@ -46,7 +113,7 @@ async function forward(req: NextRequest, pathSegments: string[]) {
   const accept = req.headers.get('accept');
   if (accept) headers.set('accept', accept);
 
-  const token = await pickToken();
+  const token = await pickToken(req, pathSegments);
   if (token) headers.set('authorization', `Bearer ${token}`);
 
   // Body so para metodos que aceitam payload.
