@@ -12,8 +12,8 @@ from app.schemas.auth import (
     ParentSignupRequest, ParentSignupResponse,
     ParentLoginRequest, ParentLoginResponse,
     PasswordResetRequest, PasswordResetConfirm,
-    ParentInfo, ChildLoginRequest, ChildLoginResponse,
-    ApiResponse
+    ParentInfo, ChildLoginRequest, ChildLoginDirectRequest,
+    ChildLoginResponse, ApiResponse
 )
 from app.schemas.common import ErrorResponse
 from app.core.dependencies import ParentAuth, DBClient
@@ -240,6 +240,80 @@ async def get_parent_info(auth: ParentAuth, db: DBClient):
         raise
     except Exception as e:
         logger.error("Erro ao buscar pai", error=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.post("/child/login-direct", response_model=ChildLoginResponse)
+@limiter.limit("5/minute")
+async def child_login_direct(request: Request, payload: ChildLoginDirectRequest, db: DBClient):
+    """
+    Login direto da crianca por username + PIN, sem precisar do device do
+    pai logado. Resposta no mesmo formato de child_login pra reuso de
+    cookie/session no frontend.
+
+    Mensagem generica em qualquer falha (username inexistente OU PIN errado)
+    pra nao vazar quais usernames existem. Rate limit 5/min por IP.
+    """
+    generic_unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Utilizador ou PIN incorretos"}},
+    )
+    try:
+        child_data = await db.execute_query(
+            """
+            SELECT id, parent_id, name, age, avatar_id, pin_hash,
+                   xp, level, streak_days, daily_limit_minutes, last_active_date
+            FROM children
+            WHERE username = $1
+            """,
+            payload.username,
+        )
+
+        if not child_data:
+            raise generic_unauthorized
+
+        child = child_data[0]
+
+        # PIN obrigatorio nesse fluxo (sem o pai por perto pra autorizar
+        # crianca sem PIN). Crianca sem pin_hash nao consegue login direto.
+        if not child['pin_hash']:
+            raise generic_unauthorized
+
+        if not verify_pin(payload.pin, child['pin_hash']):
+            raise generic_unauthorized
+
+        child_token = create_child_jwt(child['id'], child['parent_id'])
+
+        logger.info(
+            "Login direto crianca",
+            child_id=child['id'],
+            username=payload.username,
+        )
+
+        return ChildLoginResponse(
+            access_token=child_token,
+            expires_in=14400,  # 4 horas
+            child={
+                "id": child['id'],
+                "name": child['name'],
+                "age": child['age'],
+                "avatar_id": child['avatar_id'],
+                "xp": int(child.get('xp') or 0),
+                "level": int(child.get('level') or 1),
+                "streak_days": int(child.get('streak_days') or 0),
+                "daily_limit_minutes": int(child.get('daily_limit_minutes') or 30),
+                "last_active_date": (
+                    child['last_active_date'].isoformat()
+                    if child.get('last_active_date') else None
+                ),
+                "pin_set": True,
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro no login direto crianca", error=str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

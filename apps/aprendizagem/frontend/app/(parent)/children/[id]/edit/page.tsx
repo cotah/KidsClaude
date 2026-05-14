@@ -21,6 +21,11 @@ const editSchema = z.object({
     .string()
     .min(1, 'Nome obrigatorio')
     .max(config.limits.childNameMaxLength, `Maximo ${config.limits.childNameMaxLength} caracteres`),
+  username: z
+    .string()
+    .min(3, 'Mínimo 3 caracteres')
+    .max(30, 'Máximo 30 caracteres')
+    .regex(/^[a-z0-9-]+$/, 'Apenas letras minúsculas, números e hífens'),
   age: z.number().min(6).max(12),
   avatar_id: z.string().min(1, 'Avatar obrigatorio'),
   // PIN deixado vazio = nao alterar; "0000" = remover (tratado no submit).
@@ -57,6 +62,7 @@ export default function EditChildPage() {
     resolver: zodResolver(editSchema),
     defaultValues: {
       name: '',
+      username: '',
       age: 6,
       avatar_id: '',
       pin: '',
@@ -69,6 +75,9 @@ export default function EditChildPage() {
     if (child) {
       form.reset({
         name: child.name,
+        // child.username pode vir undefined em registros antigos (pre-006);
+        // o pai e' forcado a definir um aqui para passar a validacao.
+        username: child.username ?? '',
         age: child.age,
         avatar_id: child.avatar_id,
         pin: '',
@@ -82,6 +91,7 @@ export default function EditChildPage() {
     mutationFn: (data: EditFormData) => {
       const payload: Record<string, unknown> = {
         name: data.name,
+        username: data.username,
         age: data.age,
         avatar_id: data.avatar_id,
         daily_limit_minutes: data.daily_limit_minutes,
@@ -165,6 +175,27 @@ export default function EditChildPage() {
             {form.formState.errors.name && (
               <p className="mt-1 text-sm text-red-600">{form.formState.errors.name.message}</p>
             )}
+          </div>
+
+          <div>
+            <label htmlFor="username" className="mb-2 block text-sm font-medium text-gray-700">
+              Nome de utilizador
+            </label>
+            <input
+              {...form.register('username')}
+              type="text"
+              id="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            {form.formState.errors.username && (
+              <p className="mt-1 text-sm text-red-600">{form.formState.errors.username.message}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Usado para login direto em /crianca. Letras minúsculas, números e hífens.
+            </p>
           </div>
 
           <div>

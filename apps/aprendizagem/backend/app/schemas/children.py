@@ -9,6 +9,10 @@ from datetime import date, datetime
 
 class ChildCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=30)
+    # username e' obrigatorio: e' o login da crianca em /crianca. Formato:
+    # 3-30 chars, lowercase + digitos + hifen. Sem maiusculas, espacos ou
+    # acentos pra evitar problemas de teclado mobile e login case-sensitive.
+    username: str = Field(..., min_length=3, max_length=30, pattern=r'^[a-z0-9-]+$')
     age: int = Field(..., ge=6, le=16)
     avatar_id: str = Field(..., min_length=1)
     pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
@@ -22,6 +26,7 @@ class ChildCreateRequest(BaseModel):
 
 class ChildUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=30)
+    username: Optional[str] = Field(None, min_length=3, max_length=30, pattern=r'^[a-z0-9-]+$')
     age: Optional[int] = Field(None, ge=6, le=16)
     avatar_id: Optional[str] = None
     pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
@@ -37,6 +42,9 @@ class ChildResponse(BaseModel):
     id: str
     parent_id: str
     name: str
+    # Optional pra dados antigos sem username (pre migration 006). Backfill
+    # nao e' automatico - dashboard mostra "definir username" se vier None.
+    username: Optional[str] = None
     age: int
     avatar_id: str
     daily_limit_minutes: int

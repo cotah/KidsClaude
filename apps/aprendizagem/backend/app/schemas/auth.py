@@ -74,6 +74,15 @@ class ChildLoginRequest(BaseModel):
     pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
 
 
+class ChildLoginDirectRequest(BaseModel):
+    """
+    Login direto da crianca sem precisar do device do pai.
+    Username + PIN. Mesmo formato de username do create/update child.
+    """
+    username: str = Field(..., min_length=3, max_length=30, pattern=r'^[a-z0-9-]+$')
+    pin: str = Field(..., pattern=r'^\d{4}$')
+
+
 class ChildLoginResponse(BaseModel):
     access_token: str
     expires_in: int

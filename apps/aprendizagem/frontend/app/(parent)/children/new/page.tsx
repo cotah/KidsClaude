@@ -19,6 +19,12 @@ const childSchema = z.object({
   name: z.string()
     .min(1, 'Nome obrigatório')
     .max(config.limits.childNameMaxLength, `Nome deve ter no máximo ${config.limits.childNameMaxLength} caracteres`),
+  // username e' o login da crianca em /crianca. Lowercase + digitos + hifen,
+  // 3-30 chars. Mesmo padrao validado no backend (schemas/children.py).
+  username: z.string()
+    .min(3, 'Mínimo 3 caracteres')
+    .max(30, 'Máximo 30 caracteres')
+    .regex(/^[a-z0-9-]+$/, 'Apenas letras minúsculas, números e hífens'),
   age: z.number()
     .min(6, 'Idade mínima: 6 anos')
     .max(12, 'Idade máxima: 12 anos'),
@@ -48,6 +54,7 @@ export default function CreateChildPage() {
     resolver: zodResolver(childSchema),
     defaultValues: {
       name: '',
+      username: '',
       age: 6,
       avatar_id: '',
       pin: '',
@@ -126,6 +133,31 @@ export default function CreateChildPage() {
             )}
             <p className="mt-1 text-xs text-gray-500">
               Use um apelido, não precisa ser o nome completo
+            </p>
+          </div>
+
+          {/* Username (login direto) */}
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+              Nome de utilizador *
+            </label>
+            <input
+              {...form.register('username')}
+              type="text"
+              id="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="ex: valentina2026"
+            />
+            {form.formState.errors.username && (
+              <p className="mt-1 text-sm text-red-600">
+                {form.formState.errors.username.message}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Este será o nome de login da criança. Ex: valentina2026
             </p>
           </div>
 

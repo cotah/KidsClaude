@@ -12,8 +12,9 @@ export function middleware(request: NextRequest) {
   const parentToken = request.cookies.get(appConfig.auth.parentCookieName)?.value;
   const childToken = request.cookies.get(appConfig.auth.childCookieName)?.value;
 
-  // Rotas públicas (não precisam de auth)
-  const publicRoutes = ['/', '/signup', '/login', '/forgot-password'];
+  // Rotas públicas (não precisam de auth). /crianca permite que a crianca
+  // faca login direto (username + PIN) sem precisar do device do pai.
+  const publicRoutes = ['/', '/signup', '/login', '/forgot-password', '/crianca'];
   const isPublicRoute = publicRoutes.includes(pathname);
 
   // Rotas que exigem auth de pai

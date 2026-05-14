@@ -7,6 +7,7 @@ import type {
   ParentLoginResponse,
   ParentProfile,
   ChildLoginRequest,
+  ChildLoginDirectRequest,
   ChildLoginResponse,
 } from '@/types/api';
 
@@ -65,6 +66,14 @@ export const authApi = {
     // Armazenar token de criança em cookie httpOnly
     await this.setSession(response.access_token, 'child', response.expires_in);
 
+    return response;
+  },
+
+  // Login direto da crianca (username + PIN, sem precisar do device do pai).
+  // Usado pela rota publica /crianca.
+  async childLoginDirect(data: ChildLoginDirectRequest): Promise<ChildLoginResponse> {
+    const response = await apiClient.post<ChildLoginResponse>('auth/child/login-direct', data);
+    await this.setSession(response.access_token, 'child', response.expires_in);
     return response;
   },
 

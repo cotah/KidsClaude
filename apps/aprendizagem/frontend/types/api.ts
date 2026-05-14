@@ -45,6 +45,11 @@ export interface ChildLoginRequest {
   pin?: string;
 }
 
+export interface ChildLoginDirectRequest {
+  username: string;
+  pin: string;
+}
+
 export interface ChildLoginResponse {
   access_token: string;
   expires_in: number;
@@ -61,6 +66,8 @@ export interface ParentProfile {
 export interface Child {
   id: string;
   name: string;
+  // Optional pra dados antigos sem username (pre migration 006).
+  username?: string;
   age: number;
   avatar_id: string;
   daily_limit_minutes: number;
@@ -74,6 +81,7 @@ export interface Child {
 
 export interface CreateChildRequest {
   name: string;
+  username: string;
   age: number;
   avatar_id: string;
   pin?: string;
@@ -82,6 +90,7 @@ export interface CreateChildRequest {
 
 export interface UpdateChildRequest {
   name?: string;
+  username?: string;
   age?: number;
   avatar_id?: string;
   pin?: string;

@@ -78,4 +78,16 @@ else
     echo "[migrate] 005 already applied (new curriculum slug present), skipping"
 fi
 
+# Gate 006: coluna username na tabela children (login direto da crianca).
+# Detectamos via information_schema.columns. Se username existe, ja' rodou.
+USERNAME_COL_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='children' AND column_name='username');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$USERNAME_COL_EXISTS" ] || [ "$USERNAME_COL_EXISTS" = "f" ]; then
+    echo "[migrate] running 006_add_child_username.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/006_add_child_username.sql
+    echo "[migrate] 006 done"
+else
+    echo "[migrate] 006 already applied (username column present), skipping"
+fi
+
 echo "[migrate] done. starting server..."

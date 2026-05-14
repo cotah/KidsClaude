@@ -3,6 +3,7 @@ Rotas para operações CRUD de crianças.
 Apenas pais podem gerenciar perfis de filhos.
 """
 
+import asyncpg
 import structlog
 from typing import List
 from fastapi import APIRouter, HTTPException, status
@@ -31,8 +32,9 @@ async def list_children(auth: AnyAuth, db: DBClient):
     try:
         if auth.is_parent:
             children_data = await db.execute_query("""
-                SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                       level, xp, streak_days, last_active_date, created_at,
+                SELECT id, parent_id, name, username, age, avatar_id,
+                       daily_limit_minutes, level, xp, streak_days,
+                       last_active_date, created_at,
                        (pin_hash IS NOT NULL) AS pin_set
                 FROM children
                 WHERE parent_id = $1
@@ -40,8 +42,9 @@ async def list_children(auth: AnyAuth, db: DBClient):
             """, auth.user_id)
         else:  # crianca - retorna so' o proprio registro
             children_data = await db.execute_query("""
-                SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                       level, xp, streak_days, last_active_date, created_at,
+                SELECT id, parent_id, name, username, age, avatar_id,
+                       daily_limit_minutes, level, xp, streak_days,
+                       last_active_date, created_at,
                        (pin_hash IS NOT NULL) AS pin_set
                 FROM children
                 WHERE id = $1
@@ -79,15 +82,27 @@ async def create_child(request: ChildCreateRequest, auth: ParentAuth, db: DBClie
         # Hash do PIN se fornecido
         pin_hash = hash_pin(request.pin) if request.pin else None
 
-        # Insere criança
-        result = await db.execute_query("""
-            INSERT INTO children (parent_id, name, age, avatar_id, pin_hash, daily_limit_minutes)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                      level, xp, streak_days, last_active_date, created_at,
-                      (pin_hash IS NOT NULL) AS pin_set
-        """, auth.user_id, request.name, request.age, request.avatar_id,
-             pin_hash, request.daily_limit_minutes)
+        # Insere criança. Username e' UNIQUE - a violacao volta como
+        # asyncpg.UniqueViolationError, traduzida em 409 abaixo.
+        try:
+            result = await db.execute_query("""
+                INSERT INTO children (parent_id, name, username, age, avatar_id,
+                                      pin_hash, daily_limit_minutes)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id, parent_id, name, username, age, avatar_id,
+                          daily_limit_minutes, level, xp, streak_days,
+                          last_active_date, created_at,
+                          (pin_hash IS NOT NULL) AS pin_set
+            """, auth.user_id, request.name, request.username, request.age,
+                 request.avatar_id, pin_hash, request.daily_limit_minutes)
+        except asyncpg.UniqueViolationError:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": {
+                    "code": "USERNAME_TAKEN",
+                    "message": "Este nome de utilizador já está em uso. Escolha outro.",
+                }},
+            )
 
         child_data = result[0]
         logger.info("Criança criada", child_id=child_data['id'], parent_id=auth.user_id)
@@ -108,9 +123,10 @@ async def get_child(child_id: str, auth: ParentAuth, db: DBClient):
     """
     try:
         child_data = await db.execute_query("""
-            SELECT id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                   level, xp, streak_days, last_active_date, created_at,
-                       (pin_hash IS NOT NULL) AS pin_set
+            SELECT id, parent_id, name, username, age, avatar_id,
+                   daily_limit_minutes, level, xp, streak_days,
+                   last_active_date, created_at,
+                   (pin_hash IS NOT NULL) AS pin_set
             FROM children
             WHERE id = $1 AND parent_id = $2
         """, child_id, auth.user_id)
@@ -159,6 +175,11 @@ async def update_child(child_id: str, request: ChildUpdateRequest, auth: ParentA
             params.append(request.name)
             param_count += 1
 
+        if request.username is not None:
+            update_fields.append(f"username = ${param_count}")
+            params.append(request.username)
+            param_count += 1
+
         if request.age is not None:
             update_fields.append(f"age = ${param_count}")
             params.append(request.age)
@@ -191,12 +212,22 @@ async def update_child(child_id: str, request: ChildUpdateRequest, auth: ParentA
             UPDATE children
             SET {', '.join(update_fields)}
             WHERE id = ${param_count} AND parent_id = ${param_count + 1}
-            RETURNING id, parent_id, name, age, avatar_id, daily_limit_minutes,
-                      level, xp, streak_days, last_active_date, created_at,
+            RETURNING id, parent_id, name, username, age, avatar_id,
+                      daily_limit_minutes, level, xp, streak_days,
+                      last_active_date, created_at,
                       (pin_hash IS NOT NULL) AS pin_set
         """
 
-        result = await db.execute_query(query, *params)
+        try:
+            result = await db.execute_query(query, *params)
+        except asyncpg.UniqueViolationError:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": {
+                    "code": "USERNAME_TAKEN",
+                    "message": "Este nome de utilizador já está em uso. Escolha outro.",
+                }},
+            )
         logger.info("Criança atualizada", child_id=child_id)
 
         return ChildResponse(**result[0])
