@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { LogOut, Star, Award, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -22,6 +22,7 @@ import type { Child } from '@/types/api';
  */
 export function ChildNavbar() {
   const t = useTranslations('navbar_child');
+  const locale = useLocale();
   const router = useRouter();
   const { currentChild, setCurrentChild } = useAppStore();
 
@@ -130,11 +131,12 @@ export function ChildNavbar() {
                 <div className="text-center">
                   <p className="font-bold text-orange-700">{childData.streak_days}</p>
                   <p className="text-xs text-orange-600">
-                    {/* days_word: ICU plural que devolve so' a palavra
-                        ("day"/"days" em EN, "dia"/"dias" em PT) baseado
-                        em n. Numero ja' aparece no <p> acima. Sintaxe:
-                        {n, plural, one {day} other {days}}. */}
-                    {t('days_word', { n: childData.streak_days })}
+                    {/* JavaScript puro - ICU plural via t() falhava em
+                        producao apesar do JSON estar correto. Conditional
+                        direto e' simples e auditavel. */}
+                    {locale === 'en'
+                      ? childData.streak_days === 1 ? 'day' : 'days'
+                      : childData.streak_days === 1 ? 'dia' : 'dias'}
                   </p>
                 </div>
               </div>

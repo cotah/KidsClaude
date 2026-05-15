@@ -211,6 +211,18 @@ function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemP
   const tLesson = useTranslations('lesson');
   const locale = useLocale();
 
+  // Diagnostico: mostra o que o backend mandou pra esta licao. Se
+  // title_en/description_en virem null|undefined, o fallback cai pra PT
+  // (causa raiz mais provavel). Abrir F12 -> Console pra ver.
+  console.log('[LessonListItem]', {
+    slug: lesson.slug,
+    locale,
+    title: lesson.title,
+    title_en: lesson.title_en,
+    description: lesson.description,
+    description_en: lesson.description_en,
+  });
+
   // Locale-aware: usa title_en/description_en quando locale='en' e o
   // backend tem traducao (migrations 010+012). Fallback PT pra licoes
   // antigas que nao foram traduzidas.
