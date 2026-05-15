@@ -201,11 +201,15 @@ export interface PromptTemplate {
   lesson_id: string;
   label: string;
   template: string;
-  slots: Array<{
-    name: string;
-    max_length: number;
-    allowed_chars: string;
-  }>;
+  // null/empty pra templates "fechados" (sem campos editaveis) - usuario
+  // so' clica e envia. Migration 005/007 cria todos como slots=NULL.
+  slots:
+    | Array<{
+        name: string;
+        max_length: number;
+        allowed_chars: string;
+      }>
+    | null;
   age_band: '6-8' | '9-10' | '11-12' | '12+';
   order_index: number;
 }

@@ -18,11 +18,16 @@ export function PromptSlotEditor({ templates, onSubmit, disabled }: PromptSlotEd
   const [slotValues, setSlotValues] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
+  // Helper: templates com slots NULL ou [] sao "fechados" (clicar = enviar).
+  // Migration 005/007 cria todos os 48 templates com slots=NULL.
+  const hasEditableSlots = (tpl: PromptTemplate | null): boolean =>
+    !!tpl?.slots && tpl.slots.length > 0;
+
   // Pre-visualizacao do prompt com os slots substituidos.
   const preview = useMemo(() => {
     if (!selected) return '';
     let text = selected.template;
-    for (const slot of selected.slots) {
+    for (const slot of selected.slots ?? []) {
       const value = slotValues[slot.name] ?? '';
       text = text.replaceAll(`{{${slot.name}}}`, value || `___${slot.name}___`);
     }
@@ -30,6 +35,12 @@ export function PromptSlotEditor({ templates, onSubmit, disabled }: PromptSlotEd
   }, [selected, slotValues]);
 
   const handleSelect = (tpl: PromptTemplate) => {
+    // Template fechado (sem slots): submete direto, sem abrir o editor.
+    // UX igual ao PromptButtonRow das criancas 6-8.
+    if (!hasEditableSlots(tpl)) {
+      onSubmit(tpl, {});
+      return;
+    }
     setSelected(tpl);
     setSlotValues({});
     setError(null);
@@ -38,7 +49,7 @@ export function PromptSlotEditor({ templates, onSubmit, disabled }: PromptSlotEd
   const handleSubmit = () => {
     if (!selected) return;
     // Valida slots antes de enviar - confere comprimento e caracteres permitidos.
-    for (const slot of selected.slots) {
+    for (const slot of selected.slots ?? []) {
       const value = (slotValues[slot.name] ?? '').trim();
       if (!value) {
         setError(`Preencha o campo "${slot.name}" para enviar.`);
@@ -103,7 +114,7 @@ export function PromptSlotEditor({ templates, onSubmit, disabled }: PromptSlotEd
       </header>
 
       <div className="space-y-3">
-        {selected.slots.map((slot) => (
+        {(selected.slots ?? []).map((slot) => (
           <div key={slot.name} className="space-y-1">
             <label
               htmlFor={`slot-${slot.name}`}
