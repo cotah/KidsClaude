@@ -135,4 +135,22 @@ else
     echo "[migrate] 009 already applied (adapted content present), skipping"
 fi
 
+# Gate 010: versao em ingles dos titulos, content_blocks e challenges.
+# Sentinel: existencia da coluna lessons.title_en. Migration adiciona
+# 4 colunas (lessons.title_en, lessons.content_blocks_en, challenges.
+# question_en, challenges.options_en) e popula 16 licoes + 32 challenges
+# em uma transacao (ROLLBACK total se algo falhar - re-execucao limpa).
+TITLE_EN_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lessons' AND column_name='title_en');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$TITLE_EN_EXISTS" ] || [ "$TITLE_EN_EXISTS" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 010..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 010_english_content.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/010_english_content.sql
+    echo "[migrate] 010 done"
+else
+    echo "[migrate] 010 already applied (title_en column present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
