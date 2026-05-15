@@ -18,6 +18,7 @@ import { chatApi } from '@/lib/api/chat';
 import { getApiErrorCode, getApiErrorMessage } from '@/lib/api/client';
 import useAppStore from '@/lib/store/app-store';
 import { getAgeGroup } from '@/lib/utils';
+import { stripMarkdown } from '@/lib/utils/markdown';
 import type { ChatMessage, PromptTemplate, SendMessageResponse } from '@/types/api';
 
 const MAX_STRIKES = 3;
@@ -157,7 +158,11 @@ export default function ChatPage() {
           setSessionEnded(true);
         }
       }
-      await animateAssistant(res.assistant_message.content, res);
+      // Strip markdown da resposta do Claude antes de animar - crianças
+      // 6-12 nao precisam ver simbolos **, #, `, etc. CSS whitespace-pre-wrap
+      // no ChatBubble preserva quebras de linha geradas por listas/paragrafos.
+      const cleanContent = stripMarkdown(res.assistant_message.content);
+      await animateAssistant(cleanContent, res);
     } catch (err) {
       const code = getApiErrorCode(err);
       // INPUT_BLOCKED tambem conta strike e mostra refusal amigavel inline.

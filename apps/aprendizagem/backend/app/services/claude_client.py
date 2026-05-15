@@ -75,7 +75,11 @@ Idade da criança: {child_age} anos"""
             # chat). Caching e' GA agora, header beta opcional.
             response = await self.client.messages.create(
                 model=model_to_use,
-                max_tokens=200,  # Respostas curtas para crianças
+                # 200 cortava respostas no meio (ex: "organ" em vez de
+                # "organizado"). 1024 cabe explicacao tecnica + historia
+                # completa sem truncar. system prompt cap ainda limita
+                # max 8 frases pra historias.
+                max_tokens=1024,
                 temperature=0.7,  # Criatividade moderada
                 system=[
                     {
