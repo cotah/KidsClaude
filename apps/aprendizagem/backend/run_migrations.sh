@@ -118,4 +118,21 @@ else
     echo "[migrate] 008 already applied (badges_cleaned_at column present), skipping"
 fi
 
+# Gate 009: content_blocks adaptados por idade nas 16 licoes regulares.
+# Sentinel: frase exclusiva da nova versao da s1-o-que-e-ia ("brinquedo
+# que parecia pensar sozinho"). Se ela existe no JSONB de qualquer linha
+# de lessons, 009 ja' rodou.
+HAS_ADAPTED_CONTENT=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-e-ia' AND content_blocks::text LIKE '%brinquedo que parecia pensar sozinho%');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$HAS_ADAPTED_CONTENT" ] || [ "$HAS_ADAPTED_CONTENT" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 009..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 009_adapted_content.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/009_adapted_content.sql
+    echo "[migrate] 009 done"
+else
+    echo "[migrate] 009 already applied (adapted content present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
