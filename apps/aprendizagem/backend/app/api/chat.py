@@ -166,45 +166,64 @@ async def send_message(
                 detail={"error": {"code": "RATE_LIMITED", "message": "Limite de mensagens atingido"}}
             )
 
-        # Busca template
-        template_data = await db.execute_query("""
-            SELECT id, label, template, slots, age_band
-            FROM prompt_templates
-            WHERE id = $1
-        """, request.template_id)
+        # Decide a fonte do conteudo: template (curado) ou texto livre.
+        # Texto livre passa por moderacao COMPLETA; template tem bypass de
+        # blocklist porque ja' foi curado por adultos.
+        message_content: str
+        template_id_for_db: Optional[str]
+        bypass = False
 
-        if not template_data:
+        if request.template_id:
+            # Modo template: busca, processa slots se houver.
+            template_data = await db.execute_query("""
+                SELECT id, label, template, slots, age_band
+                FROM prompt_templates
+                WHERE id = $1
+            """, request.template_id)
+
+            if not template_data:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={"error": {"code": "NOT_FOUND", "message": "Template não encontrado"}}
+                )
+
+            template = template_data[0]
+            message_content = template['template']
+            if template['slots'] and request.slots:
+                message_content = await _process_template_slots(
+                    template['template'],
+                    template['slots'],
+                    request.slots,
+                )
+            template_id_for_db = template['id']
+            bypass = True  # Texto curado, pula blocklist
+        elif request.content:
+            # Modo texto livre: usa direto, sem bypass.
+            content = request.content.strip()
+            if not content:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": {"code": "EMPTY_CONTENT", "message": "Mensagem vazia"}}
+                )
+            message_content = content
+            template_id_for_db = None
+            bypass = False  # Texto livre da crianca - moderacao completa
+        else:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": {"code": "NOT_FOUND", "message": "Template não encontrado"}}
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": {"code": "MISSING_INPUT", "message": "template_id ou content obrigatorio"}}
             )
 
-        template = template_data[0]
-
-        # Processa slots se for template editável
-        message_content = template['template']
-        if template['slots'] and request.slots:
-            message_content = await _process_template_slots(
-                template['template'],
-                template['slots'],
-                request.slots
-            )
-
-        # MODERAÇÃO DE INPUT.
-        # bypass_blocklist=True porque o texto vem de prompt_template curado
-        # por adultos (revisado nas migrations 005/007). PII e length seguem
-        # ativos pra pegar slot values digitados pela crianca com email/
-        # telefone. Sem isso, "passo a passo" caia em "ass" da blocklist EN
-        # via match por substring (corrigido tambem em moderation._check_blocklist).
+        # MODERAÇÃO DE INPUT (blocklist depende do tipo da fonte).
         try:
             moderation = ModerationService()
-            await moderation.moderate_input(message_content, bypass_blocklist=True)
+            await moderation.moderate_input(message_content, bypass_blocklist=bypass)
         except InputModerationError as e:
-            # Registra mensagem bloqueada
+            # Registra mensagem bloqueada (template_id_for_db = None pra texto livre)
             await db.execute_non_query("""
                 INSERT INTO chat_messages (session_id, role, content, template_id, moderation_status, moderation_reason)
                 VALUES ($1, 'child', $2, $3, 'blocked', $4)
-            """, session_id, message_content, request.template_id, e.reason)
+            """, session_id, message_content, template_id_for_db, e.reason)
 
             # Registra evento de segurança
             await _log_safety_event(db, auth.user_id, session_id, 'input_blocked', {
@@ -221,11 +240,11 @@ async def send_message(
                 detail={"error": {"code": "INPUT_BLOCKED", "message": e.reason}}
             )
 
-        # Registra mensagem da criança
+        # Registra mensagem da criança (template_id_for_db = None pra texto livre)
         await db.execute_non_query("""
             INSERT INTO chat_messages (session_id, role, content, template_id, moderation_status)
             VALUES ($1, 'child', $2, $3, 'passed')
-        """, session_id, message_content, request.template_id)
+        """, session_id, message_content, template_id_for_db)
 
         # Chama Claude
         claude = ClaudeClient()

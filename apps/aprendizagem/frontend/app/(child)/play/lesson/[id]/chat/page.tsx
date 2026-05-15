@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import type { Route } from 'next';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MascotBubble, Mascot } from '@/components/ui/mascot-bubble';
@@ -19,7 +19,9 @@ import { getApiErrorCode, getApiErrorMessage } from '@/lib/api/client';
 import useAppStore from '@/lib/store/app-store';
 import { getAgeGroup } from '@/lib/utils';
 import { stripMarkdown } from '@/lib/utils/markdown';
-import type { ChatMessage, PromptTemplate, SendMessageResponse } from '@/types/api';
+import type { ChatMessage, PromptTemplate, SendMessageRequest, SendMessageResponse } from '@/types/api';
+
+const FREE_TEXT_MAX_LENGTH = 200;
 
 const MAX_STRIKES = 3;
 // Velocidade da animacao de "digitacao" da resposta da Claude (caracteres/tick).
@@ -43,6 +45,10 @@ export default function ChatPage() {
   const [pendingText, setPendingText] = useState('');
   const [strikes, setStrikes] = useState(0);
   const [sessionEnded, setSessionEnded] = useState(false);
+  // hasInteracted: true depois que a crianca enviou a 1a mensagem (sugestao
+  // ou texto livre). Usado pra alternar suggestions -> input box.
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [inputText, setInputText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const ageGroup = currentChild ? getAgeGroup(currentChild.age) : '6-8';
@@ -117,37 +123,32 @@ export default function ChatPage() {
     [sessionId]
   );
 
-  const sendPrompt = async (template: PromptTemplate, slots?: Record<string, string>) => {
+  // Helper compartilhado: envia mensagem (template OU texto livre), faz
+  // optimistic UI, anima a resposta e trata erros. Antes era inline em
+  // sendPrompt; agora reusado por sendFreeText pra que o input livre tenha
+  // exatamente o mesmo fluxo (strikes, INPUT_BLOCKED handling, etc).
+  const sendAndAnimate = async (params: {
+    optimisticContent: string;
+    optimisticTemplateId?: string;
+    apiRequest: SendMessageRequest;
+  }) => {
     if (!sessionId || sessionEnded || pending) return;
-
-    // Optimistic: mostra a bolha do usuario imediatamente.
-    let renderedText = template.template;
-    if (slots) {
-      for (const [k, v] of Object.entries(slots)) {
-        renderedText = renderedText.replaceAll(`{{${k}}}`, v);
-      }
-    } else {
-      // Sem slots, removemos os marcadores caso existam.
-      renderedText = renderedText.replace(/\{\{[^}]+\}\}/g, '');
-    }
 
     const optimisticChild: ChatMessage = {
       id: `tmp-${Date.now()}`,
       session_id: sessionId,
       role: 'child',
-      template_id: template.id,
-      content: renderedText.trim() || template.label,
+      template_id: params.optimisticTemplateId,
+      content: params.optimisticContent,
       moderation_status: 'passed',
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimisticChild]);
     setPending(true);
+    setHasInteracted(true);
 
     try {
-      const res = await chatApi.sendMessage(sessionId, {
-        template_id: template.id,
-        slots,
-      });
+      const res = await chatApi.sendMessage(sessionId, params.apiRequest);
 
       // Se o backend bloqueou o output, conta strike e mostra mensagem amigavel.
       const blocked = res.assistant_message.moderation_status === 'blocked';
@@ -203,6 +204,43 @@ export default function ChatPage() {
         });
         setPending(false);
       }
+    }
+  };
+
+  // Envia uma sugestao (template) - renderiza slots e delega ao helper.
+  const sendPrompt = async (template: PromptTemplate, slots?: Record<string, string>) => {
+    let renderedText = template.template;
+    if (slots) {
+      for (const [k, v] of Object.entries(slots)) {
+        renderedText = renderedText.replaceAll(`{{${k}}}`, v);
+      }
+    } else {
+      // Sem slots, removemos os marcadores caso existam.
+      renderedText = renderedText.replace(/\{\{[^}]+\}\}/g, '');
+    }
+    await sendAndAnimate({
+      optimisticContent: renderedText.trim() || template.label,
+      optimisticTemplateId: template.id,
+      apiRequest: { template_id: template.id, slots },
+    });
+  };
+
+  // Envia texto livre digitado pela crianca (apos a 1a interacao).
+  // Backend valida 200 chars + roda blocklist completa (sem bypass).
+  const sendFreeText = async () => {
+    const text = inputText.trim();
+    if (!text) return;
+    setInputText('');
+    await sendAndAnimate({
+      optimisticContent: text,
+      apiRequest: { content: text },
+    });
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendFreeText();
     }
   };
 
@@ -289,7 +327,7 @@ export default function ChatPage() {
         <Card className="space-y-3 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-700">
-              Escolha uma sugestao para enviar
+              {hasInteracted ? 'Escreve a tua resposta' : 'Escolha uma sugestao para começar'}
             </p>
             <Button
               variant="ghost"
@@ -300,7 +338,47 @@ export default function ChatPage() {
               Encerrar conversa
             </Button>
           </div>
-          {ageGroup === '6-8' ? (
+
+          {hasInteracted ? (
+            // Modo texto livre: input com contador + botao enviar + Enter.
+            // Disabled enquanto Claude esta animando (pending).
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value.slice(0, FREE_TEXT_MAX_LENGTH))}
+                  onKeyDown={handleInputKeyDown}
+                  placeholder="Escreve aqui a tua resposta... 💬"
+                  maxLength={FREE_TEXT_MAX_LENGTH}
+                  disabled={pending || !sessionId}
+                  className="flex-1 rounded-2xl border-2 border-grape-200 bg-white px-4 py-3 text-base focus:border-grape-400 focus:outline-none focus:ring-2 focus:ring-grape-200 disabled:bg-gray-100 disabled:text-gray-500"
+                  autoFocus
+                />
+                <Button
+                  variant="grape"
+                  size="kid-icon"
+                  onClick={sendFreeText}
+                  disabled={pending || !sessionId || !inputText.trim()}
+                  aria-label="Enviar mensagem"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>Pressiona Enter pra enviar</span>
+                <span
+                  className={
+                    inputText.length >= FREE_TEXT_MAX_LENGTH
+                      ? 'font-bold text-sunset-600'
+                      : ''
+                  }
+                >
+                  {inputText.length}/{FREE_TEXT_MAX_LENGTH}
+                </span>
+              </div>
+            </div>
+          ) : ageGroup === '6-8' ? (
             <PromptButtonRow
               templates={templates}
               onSelect={(tpl) => sendPrompt(tpl)}

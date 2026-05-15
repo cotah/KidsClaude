@@ -247,8 +247,12 @@ export interface CreateChatSessionResponse {
 }
 
 export interface SendMessageRequest {
-  template_id: string;
+  // Pelo menos UM dos dois e' obrigatorio:
+  //   template_id: usa texto curado de prompt_templates (sugestao clicada)
+  //   content: texto livre digitado pela crianca (max 200 chars no backend)
+  template_id?: string;
   slots?: Record<string, string>;
+  content?: string;
 }
 
 export interface SendMessageResponse {

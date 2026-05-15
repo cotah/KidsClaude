@@ -17,8 +17,17 @@ class ChatSessionCreateResponse(BaseModel):
 
 
 class MessageSendRequest(BaseModel):
-    template_id: str
+    """
+    Mensagem da crianca pro chat. Aceita 2 formas:
+      - template_id (+ slots opcionais): texto vem do prompt_template
+        curado (modo "sugestao clicada"). Bypass de blocklist.
+      - content: texto livre digitado pela crianca (max 200 chars).
+        Passa pela moderacao completa (blocklist + PII + length).
+    Pelo menos um dos dois e' obrigatorio. Validacao no endpoint.
+    """
+    template_id: Optional[str] = None
     slots: Optional[Dict[str, str]] = Field(None, description="Valores para slots do template")
+    content: Optional[str] = Field(None, max_length=200, description="Texto livre digitado pela crianca")
 
 
 class AssistantMessage(BaseModel):
