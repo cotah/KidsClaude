@@ -18,6 +18,7 @@ import { calculateLevelInfo } from '@/lib/utils';
 export default function PlayPage() {
   const t = useTranslations('play');
   const tDash = useTranslations('dashboard');
+  const tLevels = useTranslations('level_names');
   const { currentChild } = useAppStore();
   const [greeting, setGreeting] = React.useState('');
 
@@ -120,7 +121,13 @@ export default function PlayPage() {
               <p>
                 {t.rich('mascot_level_intro', {
                   level: levelInfo.current,
-                  name: levelInfo.name,
+                  // Usa level_names traduzido em vez de levelInfo.name
+                  // (que vem do config.ts em PT). Fallback pra niveis fora
+                  // de 1-10 mantem o name do helper.
+                  name:
+                    levelInfo.current >= 1 && levelInfo.current <= 10
+                      ? tLevels(`${levelInfo.current}`)
+                      : levelInfo.name,
                   b: (chunks) => <strong>{chunks}</strong>,
                 })}
               </p>
