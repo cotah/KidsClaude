@@ -22,6 +22,7 @@ import type { Child } from '@/types/api';
  */
 export function ChildNavbar() {
   const t = useTranslations('navbar_child');
+  const tLevels = useTranslations('level_names');
   const router = useRouter();
   const { currentChild, setCurrentChild } = useAppStore();
 
@@ -157,7 +158,11 @@ export function ChildNavbar() {
                 {childData.name}
               </p>
               <p className="text-xs text-gray-500">
-                {config.gamification.levelNames[childData.level - 1] || `Nível ${childData.level}`}
+                {/* level_names traduz por nivel (1-10). Fallback PT/EN
+                    mantido pra niveis fora do range catalogado. */}
+                {childData.level >= 1 && childData.level <= 10
+                  ? tLevels(`${childData.level}`)
+                  : `Nível ${childData.level}`}
               </p>
             </div>
 

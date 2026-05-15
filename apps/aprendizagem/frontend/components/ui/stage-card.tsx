@@ -25,6 +25,7 @@ export function StageCard({ stage, className }: StageCardProps) {
   const tInfo = useTranslations('stage_info');
   const tCard = useTranslations('stage_page');
   const tLesson = useTranslations('lesson');
+  const tStageCard = useTranslations('stage_card');
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -158,7 +159,7 @@ export function StageCard({ stage, className }: StageCardProps) {
         {!stage.is_unlocked && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-sm">
             <div className="bg-white/90 text-gray-800 text-kid-sm px-3 py-2 rounded-kid-md shadow-lg">
-              Termine a Stage {stage.stage - 1} primeiro
+              {tStageCard('locked_hint', { previous: stage.stage - 1 })}
             </div>
           </div>
         )}

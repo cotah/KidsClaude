@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { LockIcon, CheckCircleIcon, CrownIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from './button';
 import { KidCard } from './card';
 import { cn } from '@/lib/utils';
@@ -16,13 +17,15 @@ interface FinalExamCardProps {
  * Card especial para o exame final com visual diferenciado (dourado/roxo)
  */
 export function FinalExamCard({ finalExam, className }: FinalExamCardProps) {
+  const tCard = useTranslations('final_exam_card');
+
   const getStatusInfo = () => {
     if (!finalExam.is_unlocked) {
       return {
         action: 'Bloqueado',
         icon: <LockIcon className="w-4 h-4" />,
         disabled: true,
-        description: 'Complete todas as 4 stages primeiro',
+        description: tCard('locked_message'),
       };
     }
     if (finalExam.is_completed) {
@@ -121,7 +124,7 @@ export function FinalExamCard({ finalExam, className }: FinalExamCardProps) {
           <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-sm rounded-kid-lg">
             <div className="bg-white/95 text-purple-800 text-kid-sm px-4 py-3 rounded-kid-md shadow-lg text-center max-w-[200px]">
               <LockIcon className="w-5 h-5 mx-auto mb-1" />
-              <p className="font-medium">Complete todas as 4 stages primeiro!</p>
+              <p className="font-medium">{tCard('locked_message')}</p>
             </div>
           </div>
         )}

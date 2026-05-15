@@ -13,6 +13,7 @@ interface ChildOverviewProps {
 
 export function ChildOverview({ child }: ChildOverviewProps) {
   const t = useTranslations('child_overview');
+  const tLevels = useTranslations('level_names');
   const locale = useLocale();
   const currentLevelXp = config.gamification.xpPerLevel(child.level);
   const nextLevelXp = config.gamification.xpPerLevel(child.level + 1);
@@ -42,7 +43,9 @@ export function ChildOverview({ child }: ChildOverviewProps) {
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-600">{t('level_label')}</p>
             <Badge variant="outline">
-              {config.gamification.levelNames[child.level - 1] || t('level_n', { level: child.level })}
+              {child.level >= 1 && child.level <= 10
+                ? tLevels(`${child.level}`)
+                : t('level_n', { level: child.level })}
             </Badge>
           </div>
           <Progress value={progressToNextLevel} className="h-2 mb-1" />

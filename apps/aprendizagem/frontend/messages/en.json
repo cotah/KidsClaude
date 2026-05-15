@@ -41,6 +41,24 @@
     "button_start": "Start",
     "button_review": "Review"
   },
+  "level_names": {
+    "1": "Curious",
+    "2": "Explorer",
+    "3": "Inventor",
+    "4": "Researcher",
+    "5": "Prompt Master",
+    "6": "Maker Apprentice",
+    "7": "Builder",
+    "8": "Scientist",
+    "9": "Sage",
+    "10": "Legendary"
+  },
+  "stage_card": {
+    "locked_hint": "Complete Stage {previous} first"
+  },
+  "final_exam_card": {
+    "locked_message": "Complete all 4 stages first!"
+  },
   "stage_info": {
     "1": {
       "name": "Discovery",

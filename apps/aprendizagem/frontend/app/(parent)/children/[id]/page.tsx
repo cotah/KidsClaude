@@ -52,6 +52,7 @@ export default async function ChildDetailPage({ params }: PageProps) {
   const { id } = await params;
   const t = await getTranslations('children_detail');
   const tOverview = await getTranslations('child_overview');
+  const tLevels = await getTranslations('level_names');
 
   // Buscar dados em paralelo
   const [child, progressRaw, badgesRaw, usageRaw] = await Promise.all([
@@ -122,7 +123,10 @@ export default async function ChildDetailPage({ params }: PageProps) {
             <p className="text-gray-600">
               {t('age_with_level', {
                 age: child.age,
-                level_name: config.gamification.levelNames[currentLevel - 1] || t('level_n', { level: currentLevel }),
+                level_name:
+                  currentLevel >= 1 && currentLevel <= 10
+                    ? tLevels(`${currentLevel}`)
+                    : t('level_n', { level: currentLevel }),
               })}
             </p>
           </div>

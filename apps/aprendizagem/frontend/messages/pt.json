@@ -41,6 +41,24 @@
     "button_start": "Começar",
     "button_review": "Rever"
   },
+  "level_names": {
+    "1": "Curioso",
+    "2": "Explorador",
+    "3": "Inventor",
+    "4": "Pesquisador",
+    "5": "Mestre dos Prompts",
+    "6": "Aprendiz Maker",
+    "7": "Construtor",
+    "8": "Cientista",
+    "9": "Sábio",
+    "10": "Lendário"
+  },
+  "stage_card": {
+    "locked_hint": "Termine a Stage {previous} primeiro"
+  },
+  "final_exam_card": {
+    "locked_message": "Complete todas as 4 stages primeiro!"
+  },
   "stage_info": {
     "1": {
       "name": "Discovery",
