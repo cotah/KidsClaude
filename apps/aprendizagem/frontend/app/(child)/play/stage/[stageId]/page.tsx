@@ -226,9 +226,12 @@ function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemP
         isCompleted && 'border-green-400 ring-2 ring-green-200'
       )}
     >
-      {/* Badge "Concluida" canto superior direito quando isCompleted */}
+      {/* Badge "Concluida" canto superior direito quando isCompleted.
+          bg-green-500 + text-white pra contraste forte sobre o KidCard
+          mint (que tem fundo verde claro). Antes era green-100/green-700,
+          ficava ilegivel. */}
       {isCompleted && (
-        <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-kid-xs font-medium text-green-700">
+        <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-green-500 px-2 py-1 text-kid-xs font-medium text-white shadow-md">
           <CheckCircleIcon className="w-3 h-3" />
           <span>Concluída</span>
         </div>

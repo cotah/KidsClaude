@@ -105,4 +105,17 @@ else
     echo "[migrate] 007 already applied (extra templates present), skipping"
 fi
 
+# Gate 008: limpa child_badges legados (do periodo do bug update_streak).
+# Sentinel: coluna children.badges_cleaned_at. Se nao existe, 008 nunca
+# rodou. Apos rodar, a coluna existe e nao tocamos mais.
+BADGES_CLEANED_COL_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='children' AND column_name='badges_cleaned_at');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$BADGES_CLEANED_COL_EXISTS" ] || [ "$BADGES_CLEANED_COL_EXISTS" = "f" ]; then
+    echo "[migrate] running 008_cleanup_child_badges.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/008_cleanup_child_badges.sql
+    echo "[migrate] 008 done"
+else
+    echo "[migrate] 008 already applied (badges_cleaned_at column present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
