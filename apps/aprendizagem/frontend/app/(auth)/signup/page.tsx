@@ -92,6 +92,8 @@ export default function SignupPage() {
         message = t('toast_email_exists');
       } else if (error?.status === 422) {
         message = t('toast_invalid_data');
+      } else if (error?.status === 429) {
+        message = t('toast_rate_limited');
       }
 
       toast({

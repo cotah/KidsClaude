@@ -80,7 +80,24 @@ async def parent_signup(request: Request, payload: ParentSignupRequest, db: DBCl
     except HTTPException:
         raise
     except Exception as e:
+        # Supabase Auth lança exceções com mensagens em texto livre; precisamos
+        # inspecionar para distinguir entrada invalida (4xx) de erro interno (5xx).
+        # Sem isso, o frontend mostra "Erro interno" mesmo quando o problema e'
+        # so o email rejeitado por Supabase ou rate limit estourado.
+        err_msg = str(e).lower()
         logger.error("Erro no signup", error=str(e))
+
+        if "rate limit" in err_msg:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"error": {"code": "RATE_LIMITED", "message": "Muitas tentativas. Aguarde um momento."}}
+            )
+        if "invalid" in err_msg:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": {"code": "INVALID_EMAIL", "message": "Email invalido"}}
+            )
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "SIGNUP_ERROR", "message": "Erro interno"}}

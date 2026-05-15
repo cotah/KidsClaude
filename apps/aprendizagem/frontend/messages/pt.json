@@ -89,6 +89,7 @@
     "toast_error_title": "Erro no cadastro",
     "toast_email_exists": "Este email já está cadastrado. Tente fazer login.",
     "toast_invalid_data": "Dados inválidos. Verifique as informações digitadas.",
+    "toast_rate_limited": "Muitas tentativas, aguarde um momento.",
     "toast_generic_error": "Erro ao criar conta. Tente novamente."
   },
   "forgot_password": {

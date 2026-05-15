@@ -31,6 +31,10 @@ class ApiClient {
           async (error) => {
             const { response } = error;
             if (response) {
+              // ky v1.x: HTTPError nao expoe .status na raiz, so em .response.
+              // Espelhamos em .status pra simplificar callers (signup/login/crianca
+              // ja' leem error?.status diretamente).
+              (error as any).status = response.status;
               try {
                 const errorData = (await response.json()) as ApiError;
                 error.message = errorData.error?.message || 'Erro desconhecido';

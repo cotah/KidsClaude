@@ -89,6 +89,7 @@
     "toast_error_title": "Sign up error",
     "toast_email_exists": "This email is already registered. Try signing in.",
     "toast_invalid_data": "Invalid data. Check the information you typed.",
+    "toast_rate_limited": "Too many attempts, please wait a moment.",
     "toast_generic_error": "Could not create account. Try again."
   },
   "forgot_password": {
