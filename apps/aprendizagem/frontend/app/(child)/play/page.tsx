@@ -83,7 +83,7 @@ export default function PlayPage() {
                 <div className="flex items-center space-x-2">
                   <StreakProgress days={currentChild.streak_days} />
                   <span className="text-kid-sm font-medium text-sunset-600">
-                    {currentChild.streak_days} dias
+                    {currentChild.streak_days} {currentChild.streak_days === 1 ? 'dia' : 'dias'}
                   </span>
                 </div>
               )}
