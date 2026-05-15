@@ -4,7 +4,7 @@ Implementa lógica de recompensas e desbloqueio de conquistas.
 """
 
 import math
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Tuple, Optional
 import structlog
 import pytz
@@ -142,7 +142,7 @@ class GamificationService:
             elif last_active == today:
                 # Já ativo hoje, mantém streak
                 new_streak = current_streak
-            elif last_active == today - timezone.timedelta(days=1):
+            elif last_active == today - timedelta(days=1):
                 # Ativo ontem, incrementa streak
                 new_streak = current_streak + 1
             else:

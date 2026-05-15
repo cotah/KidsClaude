@@ -325,13 +325,24 @@ async def _ensure_owns_child(child_id: str, parent_id: str, db) -> None:
 
 
 @router.get("/{child_id}/badges")
-async def get_child_badges(child_id: str, auth: ParentAuth, db: DBClient):
+async def get_child_badges(child_id: str, auth: AnyAuth, db: DBClient):
     """
     Lista conquistas (badges) desbloqueadas pela crianca.
     Retorna envelope { badges: [...] } - array vazio se ainda nada.
+
+    AnyAuth porque o navbar de /play (modo crianca) precisa contar
+    badges do proprio perfil. Se for crianca, so ve seu proprio registro.
+    Se for pai, precisa ser dono da crianca.
     """
     try:
-        await _ensure_owns_child(child_id, auth.user_id, db)
+        if auth.is_child:
+            if auth.user_id != child_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={"error": {"code": "FORBIDDEN", "message": "Acesso negado"}},
+                )
+        else:
+            await _ensure_owns_child(child_id, auth.user_id, db)
 
         rows = await db.execute_query(
             """

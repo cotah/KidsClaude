@@ -254,12 +254,15 @@ function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemP
             </p>
           </div>
 
-          {/* XP e status */}
+          {/* XP e status. Esconde "+XP" quando concluida pra nao competir
+              visualmente com a badge "Concluida" no canto superior direito. */}
           <div className="text-right space-y-2">
             <div className="flex items-center space-x-2">
-              <span className="text-kid-sm text-sunny-600 font-medium">
-                +{lesson.xp_reward} XP
-              </span>
+              {!isCompleted && (
+                <span className="text-kid-sm text-sunny-600 font-medium">
+                  +{lesson.xp_reward} XP
+                </span>
+              )}
               {getStatusIcon()}
             </div>
             <Button

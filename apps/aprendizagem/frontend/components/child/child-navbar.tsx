@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { MascotBubble } from '@/components/ui/mascot-bubble';
+import { apiClient } from '@/lib/api/client';
 import { authApi } from '@/lib/api/auth';
 import { config } from '@/lib/config';
 import { calculateLevelInfo, getLevelFloor } from '@/lib/utils';
@@ -29,6 +30,22 @@ export function ChildNavbar() {
     xp: Number(currentChild?.xp) || 0,
     streak_days: Number(currentChild?.streak_days) || 0,
   };
+
+  // Conta badges DESBLOQUEADAS (nao o catalogo todo). Endpoint devolve
+  // envelope { badges: [...] } so com as ja conquistadas (JOIN child_badges).
+  // Antes esse contador era hardcoded "5" - mostrava 5 mesmo pra crianca
+  // sem nenhuma conquista.
+  const { data: badgesData } = useQuery({
+    queryKey: ['child-badges', currentChild?.id],
+    queryFn: async () => {
+      return apiClient.get<{ badges: Array<{ id: string }> }>(
+        `children/${currentChild!.id}/badges`
+      );
+    },
+    enabled: !!currentChild?.id,
+    staleTime: 30_000,
+  });
+  const badgeCount = badgesData?.badges?.length ?? 0;
 
   // Recalcula nivel/progresso a partir do XP para evitar drift com o backend.
   const levelInfo = calculateLevelInfo(childData.xp);
@@ -87,12 +104,14 @@ export function ChildNavbar() {
               </div>
             )}
 
-            {/* Badge count (simulado) */}
+            {/* Badge count - real (vem de GET /v1/children/{id}/badges). */}
             <div className="flex items-center space-x-2 bg-yellow-100 px-3 py-2 rounded-lg">
               <Award className="w-5 h-5 text-yellow-600" />
               <div className="text-center">
-                <p className="font-bold text-yellow-700">5</p>
-                <p className="text-xs text-yellow-600">badges</p>
+                <p className="font-bold text-yellow-700">{badgeCount}</p>
+                <p className="text-xs text-yellow-600">
+                  {badgeCount === 1 ? 'badge' : 'badges'}
+                </p>
               </div>
             </div>
           </div>

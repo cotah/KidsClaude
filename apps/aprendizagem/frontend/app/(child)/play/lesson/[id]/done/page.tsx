@@ -10,7 +10,8 @@ import { Card } from '@/components/ui/card';
 import { Mascot, MascotBubble } from '@/components/ui/mascot-bubble';
 import { lessonsApi } from '@/lib/api/lessons';
 import { getApiErrorMessage } from '@/lib/api/client';
-import type { LessonCompletionResponse } from '@/types/api';
+import useAppStore from '@/lib/store/app-store';
+import type { Child, LessonCompletionResponse } from '@/types/api';
 
 /**
  * Tela de recompensa - chama POST /v1/lessons/{id}/complete e celebra
@@ -20,6 +21,7 @@ export default function LessonDonePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { currentChild, setCurrentChild } = useAppStore();
   const lessonId = params.id;
 
   const [completion, setCompletion] = useState<LessonCompletionResponse | null>(null);
@@ -34,16 +36,30 @@ export default function LessonDonePage() {
       .then((res) => {
         if (cancelled) return;
         setCompletion(res);
+        // Atualiza currentChild no zustand pra que XPProgress no header e
+        // ChildNavbar reflitam o novo XP/level imediatamente. Sem isso,
+        // a barra continua mostrando o XP antigo ate a crianca relogar.
+        if (currentChild) {
+          // Cast pra Child porque o tipo local de AppState.currentChild
+          // omite alguns campos que existem no payload real (ex:
+          // daily_limit_minutes). O store sempre recebe Child do login.
+          setCurrentChild({
+            ...(currentChild as Child),
+            xp: res.xp_total,
+            level: res.level,
+          });
+        }
         // Invalida caches dependentes pra que stages, listas de licao da
-        // stage e progresso reflitam a conclusao sem precisar refresh:
+        // stage, progresso e badges reflitam a conclusao sem refresh:
         //  - 'stages' (hub /play e header da stage page)
         //  - 'lessons' (lista da /play/stage/N - filtra por stage)
         //  - 'lesson-progress' (Set de concluidas no LessonListItem)
-        // Usamos queryKey parcial pra atingir todas as variantes (com/sem
-        // child id, com/sem stage no key array).
+        //  - 'child-badges' (contagem de badges na ChildNavbar)
+        // Usamos queryKey parcial pra atingir todas as variantes.
         queryClient.invalidateQueries({ queryKey: ['stages'] });
         queryClient.invalidateQueries({ queryKey: ['lessons'] });
         queryClient.invalidateQueries({ queryKey: ['lesson-progress'] });
+        queryClient.invalidateQueries({ queryKey: ['child-badges'] });
       })
       .catch((err) => {
         if (!cancelled) setError(getApiErrorMessage(err));
@@ -51,6 +67,10 @@ export default function LessonDonePage() {
     return () => {
       cancelled = true;
     };
+    // currentChild/setCurrentChild fora das deps de proposito: a callback
+    // roda uma unica vez no mount; ler o currentChild dentro do .then
+    // pega a referencia mais recente sem retriggerar o complete.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId, queryClient]);
 
   if (error) {
