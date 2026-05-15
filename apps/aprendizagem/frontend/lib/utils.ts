@@ -25,28 +25,31 @@ export function formatTimeForKids(minutes: number): string {
 /**
  * Formatar data relativa para crianças
  */
-export function formatDateForKids(date: Date | string): string {
+export function formatDateForKids(date: Date | string, locale: 'en' | 'pt' = 'pt'): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const now = new Date();
   const diffInHours = (now.getTime() - d.getTime()) / (1000 * 60 * 60);
+  const isEn = locale === 'en';
 
   if (diffInHours < 1) {
-    return 'Agora há pouco';
+    return isEn ? 'Just now' : 'Agora há pouco';
   }
   if (diffInHours < 24) {
-    return 'Hoje';
+    return isEn ? 'Today' : 'Hoje';
   }
   if (diffInHours < 48) {
-    return 'Ontem';
+    return isEn ? 'Yesterday' : 'Ontem';
   }
   if (diffInHours < 24 * 7) {
     const days = Math.floor(diffInHours / 24);
-    return `${days} dias atrás`;
+    return isEn
+      ? `${days} ${days === 1 ? 'day' : 'days'} ago`
+      : `${days} ${days === 1 ? 'dia' : 'dias'} atrás`;
   }
 
-  return d.toLocaleDateString('pt-BR', {
+  return d.toLocaleDateString(isEn ? 'en-US' : 'pt-BR', {
     day: 'numeric',
-    month: 'short'
+    month: 'short',
   });
 }
 

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { Route } from 'next';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,8 +23,10 @@ const BADGE_CATALOG: Array<{
 }> = [
   { code: 'FIRST_STEPS', name: 'Primeiros Passos', description: 'Concluiu sua primeira licao', icon: '👣' },
   { code: 'CURIOUS_MIND', name: 'Mente Curiosa', description: 'Explorou 3 trilhas diferentes', icon: '🔭' },
-  { code: 'STREAK_3', name: 'Sequencia de 3', description: '3 dias seguidos aprendendo', icon: '🔥' },
-  { code: 'STREAK_7', name: 'Semana Inteira', description: '7 dias seguidos aprendendo', icon: '📅' },
+  // STREAK_3 e STREAK_7: description vazio sinaliza pra render usar
+  // t('badges_catalog.<code>.description') em vez do texto local.
+  { code: 'STREAK_3', name: 'Sequencia de 3', description: '', icon: '🔥' },
+  { code: 'STREAK_7', name: 'Semana Inteira', description: '', icon: '📅' },
   { code: 'CHALLENGE_ACE', name: 'As dos Desafios', description: 'Acertou 10 desafios na primeira tentativa', icon: '🎯' },
   { code: 'STORYTELLER', name: 'Contador de Historias', description: 'Criou 5 historias completas no chat', icon: '📚' },
   { code: 'POLITE_TALKER', name: 'Boa Educacao', description: 'Usou palavras magicas em 5 conversas', icon: '🤝' },
@@ -42,6 +45,7 @@ const BADGE_CATALOG: Array<{
  */
 export default function BadgesPage() {
   const router = useRouter();
+  const tCat = useTranslations('badges_catalog');
   const { currentChild: _currentChild } = useAppStore();
 
   // Sem dashboard call em modo crianca - todas aparecem como bloqueadas
@@ -105,7 +109,9 @@ export default function BadgesPage() {
                   )}
                 </div>
                 <p className="text-sm font-bold text-gray-800">{badge.name}</p>
-                <p className="text-xs leading-tight text-gray-600">{badge.description}</p>
+                <p className="text-xs leading-tight text-gray-600">
+                  {badge.description || tCat(`${badge.code}.description`)}
+                </p>
               </div>
             );
           })}

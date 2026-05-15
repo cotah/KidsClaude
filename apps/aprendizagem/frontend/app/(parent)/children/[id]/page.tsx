@@ -51,6 +51,7 @@ interface PageProps {
 export default async function ChildDetailPage({ params }: PageProps) {
   const { id } = await params;
   const t = await getTranslations('children_detail');
+  const tOverview = await getTranslations('child_overview');
 
   // Buscar dados em paralelo
   const [child, progressRaw, badgesRaw, usageRaw] = await Promise.all([
@@ -113,7 +114,7 @@ export default async function ChildDetailPage({ params }: PageProps) {
               </div>
               <span>{child.name}</span>
               {child.streak_days > 0 && (
-                <span className="text-orange-500" title={`Sequência de ${child.streak_days} dias`}>
+                <span className="text-orange-500" title={tOverview('streak_active', { days: child.streak_days })}>
                   🔥{child.streak_days}
                 </span>
               )}
