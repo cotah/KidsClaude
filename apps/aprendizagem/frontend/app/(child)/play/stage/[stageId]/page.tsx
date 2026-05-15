@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircleIcon, LockIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KidCard } from '@/components/ui/card';
@@ -19,6 +20,7 @@ import type { Lesson } from '@/types/api';
  * Conforme spec curriculum redesign seção 7.2
  */
 export default function StagePage() {
+  const t = useTranslations('stage_page');
   const params = useParams();
   const router = useRouter();
   const { currentChild } = useAppStore();
@@ -59,11 +61,9 @@ export default function StagePage() {
       <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="text-6xl">🤔</div>
-          <p className="text-kid-lg text-gray-600">
-            Ops! Você precisa escolher seu perfil primeiro.
-          </p>
+          <p className="text-kid-lg text-gray-600">{t('guard_pick_profile')}</p>
           <Button variant="sunny" size="kid-lg" asChild>
-            <Link href="/select">Escolher Perfil</Link>
+            <Link href="/select">{t('guard_pick_button')}</Link>
           </Button>
         </div>
       </div>
@@ -75,11 +75,9 @@ export default function StagePage() {
       <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="text-6xl">🔍</div>
-          <p className="text-kid-lg text-gray-600">
-            Stage não encontrada.
-          </p>
+          <p className="text-kid-lg text-gray-600">{t('stage_not_found')}</p>
           <Button variant="sunny" size="kid-lg" asChild>
-            <Link href="/play">Voltar ao Hub</Link>
+            <Link href="/play">{t('back_to_hub')}</Link>
           </Button>
         </div>
       </div>
@@ -103,7 +101,7 @@ export default function StagePage() {
             >
               <Link href="/play" className="flex items-center space-x-2">
                 <ArrowLeft className="w-4 h-4" />
-                <span>Voltar ao Hub</span>
+                <span>{t('back_to_hub')}</span>
               </Link>
             </Button>
           </div>
@@ -116,10 +114,13 @@ export default function StagePage() {
                 </div>
                 <div>
                   <h1 className="text-kid-2xl font-bold text-gray-800">
-                    Stage {currentStage.stage}: {currentStage.name}
+                    {t('stage_label', { n: currentStage.stage, name: currentStage.name })}
                   </h1>
                   <p className="text-kid-base text-gray-600">
-                    {currentStage.description} • {currentStage.age_band_label}
+                    {t('stage_subtitle', {
+                      description: currentStage.description,
+                      age_band: currentStage.age_band_label,
+                    })}
                   </p>
                 </div>
                 <Badge
@@ -139,9 +140,9 @@ export default function StagePage() {
               {/* Barra de progresso da stage */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-kid-sm">
-                  <span className="text-gray-600">Progresso da Stage</span>
+                  <span className="text-gray-600">{t('stage_progress')}</span>
                   <span className="font-medium text-gray-800">
-                    {currentStage.lessons_completed} / {currentStage.lessons_total} lições
+                    {t('lessons_count', { completed: currentStage.lessons_completed, total: currentStage.lessons_total })}
                   </span>
                 </div>
                 <Progress value={progressPercentage} className="h-3" />
@@ -155,7 +156,7 @@ export default function StagePage() {
         {/* Lista de lições */}
         <section className="space-y-4">
           <h2 className="text-kid-xl font-bold text-gray-800 text-center">
-            Lições da Stage {stageId}
+            {t('lessons_section', { n: stageId })}
           </h2>
 
           {isLoadingLessons ? (
@@ -200,6 +201,8 @@ interface LessonListItemProps {
  *  - disponivel: padrao sunny, circulo vazio, botao "Comecar"
  */
 function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemProps) {
+  const t = useTranslations('stage_page');
+
   const getStatusIcon = () => {
     if (lesson.is_locked) {
       return <LockIcon className="w-5 h-5 text-gray-400" />;
@@ -211,9 +214,9 @@ function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemP
   };
 
   const getStatusText = () => {
-    if (lesson.is_locked) return 'Bloqueado';
-    if (isCompleted) return 'Rever';
-    return 'Começar';
+    if (lesson.is_locked) return t('status_locked');
+    if (isCompleted) return t('status_review');
+    return t('status_start');
   };
 
   return (
@@ -256,7 +259,7 @@ function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemP
             <div className="flex items-center space-x-2">
               {!isCompleted && (
                 <span className="text-kid-sm text-sunny-600 font-medium">
-                  +{lesson.xp_reward} XP
+                  {t('xp_label', { xp: lesson.xp_reward })}
                 </span>
               )}
               {getStatusIcon()}

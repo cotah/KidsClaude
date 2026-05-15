@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +11,8 @@ import { AvatarDisplay } from '@/components/avatar-picker';
 import { dashboardApi } from '@/lib/api';
 import { formatTimeForKids, calculateLevelInfo } from '@/lib/utils';
 
-/**
- * Dashboard principal dos pais - conforme spec seção 8.2
- */
 export default function DashboardPage() {
+  const t = useTranslations('dashboard');
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['parent-dashboard'],
     queryFn: dashboardApi.getDashboard,
@@ -38,19 +37,16 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-6">
         <div className="container mx-auto max-w-6xl">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Painel dos Pais
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
             <div className="flex space-x-4">
               <Button variant="outline" asChild>
-                <Link href="/children/new">Adicionar Filho</Link>
+                <Link href="/children/new">{t('add_child')}</Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/select">Modo Criança</Link>
+                <Link href="/select">{t('child_mode')}</Link>
               </Button>
             </div>
           </div>
@@ -62,10 +58,9 @@ export default function DashboardPage() {
           <EmptyState />
         ) : (
           <div className="space-y-8">
-            {/* Visão geral */}
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Seus Filhos
+                {t('your_children')}
               </h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {dashboardData.children.map((child) => (
@@ -81,22 +76,16 @@ export default function DashboardPage() {
 }
 
 function EmptyState() {
+  const t = useTranslations('dashboard');
   return (
     <div className="text-center space-y-6 py-12">
       <div className="text-6xl">👨‍👩‍👧‍👦</div>
       <div className="space-y-2">
-        <h2 className="text-2xl font-semibold text-gray-900">
-          Bem-vindo ao Aprendizagem!
-        </h2>
-        <p className="text-gray-600 max-w-lg mx-auto">
-          Comece criando um perfil para seu filho e acompanhe a jornada
-          de aprendizado sobre inteligência artificial.
-        </p>
+        <h2 className="text-2xl font-semibold text-gray-900">{t('empty_title')}</h2>
+        <p className="text-gray-600 max-w-lg mx-auto">{t('empty_body')}</p>
       </div>
       <Button variant="default" size="lg" asChild>
-        <Link href="/children/new">
-          Criar Primeiro Perfil
-        </Link>
+        <Link href="/children/new">{t('empty_cta')}</Link>
       </Button>
     </div>
   );
@@ -116,6 +105,7 @@ interface ChildCardProps {
 }
 
 function ChildCard({ child }: ChildCardProps) {
+  const t = useTranslations('dashboard');
   const levelInfo = calculateLevelInfo(child.xp);
 
   return (
@@ -125,7 +115,7 @@ function ChildCard({ child }: ChildCardProps) {
           <CardTitle className="text-lg">{child.name}</CardTitle>
           {child.alerts_count > 0 && (
             <Badge variant="destructive" className="text-xs">
-              {child.alerts_count} alertas
+              {t('alerts_count', { count: child.alerts_count })}
             </Badge>
           )}
         </div>
@@ -135,38 +125,34 @@ function ChildCard({ child }: ChildCardProps) {
           <AvatarDisplay avatarId="cat" size="md" />
           <div className="flex-1">
             <div className="text-sm font-medium">
-              Nível {child.level} - {levelInfo.name}
+              {t('level_with_name', { level: child.level, name: levelInfo.name })}
             </div>
-            <div className="text-xs text-gray-500">
-              {child.xp} XP total
-            </div>
+            <div className="text-xs text-gray-500">{t('xp_total', { xp: child.xp })}</div>
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Hoje:</span>
+            <span>{t('today')}</span>
             <span>{formatTimeForKids(child.today_minutes)}</span>
           </div>
           {child.streak_days > 0 && (
             <div className="flex justify-between text-sm">
-              <span>Sequência:</span>
+              <span>{t('streak')}</span>
               <span className="text-orange-600 font-medium">
-                🔥 {child.streak_days} dias
+                {t('streak_days', { days: child.streak_days })}
               </span>
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span>Conquistas:</span>
-            <span>{child.recent_badges.length} badges</span>
+            <span>{t('achievements')}</span>
+            <span>{t('badges_count', { count: child.recent_badges.length })}</span>
           </div>
         </div>
 
         <div className="pt-2 border-t">
           <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link href={`/children/${child.id}`}>
-              Ver Detalhes
-            </Link>
+            <Link href={`/children/${child.id}`}>{t('view_details')}</Link>
           </Button>
         </div>
       </CardContent>

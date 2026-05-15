@@ -1,11 +1,13 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -16,33 +18,8 @@ import { childrenApi } from '@/lib/api/children';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { config } from '@/lib/config';
 
-const editSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Nome obrigatorio')
-    .max(config.limits.childNameMaxLength, `Maximo ${config.limits.childNameMaxLength} caracteres`),
-  username: z
-    .string()
-    .min(3, 'Mínimo 3 caracteres')
-    .max(30, 'Máximo 30 caracteres')
-    .regex(/^[a-z0-9-]+$/, 'Apenas letras minúsculas, números e hífens'),
-  age: z.number().min(6).max(12),
-  avatar_id: z.string().min(1, 'Avatar obrigatorio'),
-  // PIN deixado vazio = nao alterar; "0000" = remover (tratado no submit).
-  pin: z
-    .string()
-    .regex(/^(\d{4})?$/, 'PIN deve ter 4 digitos')
-    .optional()
-    .or(z.literal('')),
-  daily_limit_minutes: z
-    .number()
-    .min(config.limits.minDailyLimitMinutes)
-    .max(config.limits.maxDailyLimitMinutes),
-});
-
-type EditFormData = z.infer<typeof editSchema>;
-
 export default function EditChildPage() {
+  const t = useTranslations('children_edit');
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -51,6 +28,35 @@ export default function EditChildPage() {
 
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const editSchema = React.useMemo(
+    () =>
+      z.object({
+        name: z
+          .string()
+          .min(1, t('name_required'))
+          .max(config.limits.childNameMaxLength, t('name_max', { max: config.limits.childNameMaxLength })),
+        username: z
+          .string()
+          .min(3, t('username_min'))
+          .max(30, t('username_max'))
+          .regex(/^[a-z0-9-]+$/, t('username_format')),
+        age: z.number().min(6).max(12),
+        avatar_id: z.string().min(1),
+        pin: z
+          .string()
+          .regex(/^(\d{4})?$/, t('pin_format'))
+          .optional()
+          .or(z.literal('')),
+        daily_limit_minutes: z
+          .number()
+          .min(config.limits.minDailyLimitMinutes)
+          .max(config.limits.maxDailyLimitMinutes),
+      }),
+    [t]
+  );
+
+  type EditFormData = z.infer<typeof editSchema>;
 
   const { data: child, isLoading } = useQuery({
     queryKey: ['child', childId],
@@ -102,15 +108,14 @@ export default function EditChildPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['children'] });
       queryClient.invalidateQueries({ queryKey: ['child', childId] });
-      // Cards do /dashboard tambem ficam stale quando se edita nome/avatar.
       queryClient.invalidateQueries({ queryKey: ['parent-dashboard'] });
-      toast({ type: 'success', title: 'Alteracoes salvas' });
+      toast({ type: 'success', title: t('toast_save_title') });
       router.push(`/children/${childId}` as any);
     },
     onError: (err) => {
       toast({
         type: 'error',
-        title: 'Nao consegui salvar',
+        title: t('toast_save_error_title'),
         description: getApiErrorMessage(err),
       });
     },
@@ -121,13 +126,13 @@ export default function EditChildPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['children'] });
       queryClient.invalidateQueries({ queryKey: ['parent-dashboard'] });
-      toast({ type: 'success', title: 'Perfil removido' });
+      toast({ type: 'success', title: t('toast_remove_title') });
       router.push('/dashboard');
     },
     onError: (err) => {
       toast({
         type: 'error',
-        title: 'Nao consegui remover',
+        title: t('toast_remove_error_title'),
         description: getApiErrorMessage(err),
       });
       setConfirmingDelete(false);
@@ -149,12 +154,12 @@ export default function EditChildPage() {
         <Link href={`/children/${childId}` as any}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+            {t('back')}
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Editar perfil</h1>
-          <p className="text-gray-600">Atualize informacoes ou remova este perfil.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-600">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -167,7 +172,7 @@ export default function EditChildPage() {
         <Card className="space-y-6 p-6">
           <div>
             <label htmlFor="name" className="mb-2 block text-sm font-medium text-gray-700">
-              Nome ou apelido
+              {t('name_label')}
             </label>
             <input
               {...form.register('name')}
@@ -182,7 +187,7 @@ export default function EditChildPage() {
 
           <div>
             <label htmlFor="username" className="mb-2 block text-sm font-medium text-gray-700">
-              Nome de utilizador
+              {t('username_label')}
             </label>
             <input
               {...form.register('username')}
@@ -196,14 +201,12 @@ export default function EditChildPage() {
             {form.formState.errors.username && (
               <p className="mt-1 text-sm text-red-600">{form.formState.errors.username.message}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              Usado para login direto em /crianca. Letras minúsculas, números e hífens.
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t('username_hint')}</p>
           </div>
 
           <div>
             <label htmlFor="age" className="mb-2 block text-sm font-medium text-gray-700">
-              Idade
+              {t('age_label')}
             </label>
             <select
               {...form.register('age', { valueAsNumber: true })}
@@ -212,14 +215,14 @@ export default function EditChildPage() {
             >
               {Array.from({ length: 7 }, (_, i) => i + 6).map((age) => (
                 <option key={age} value={age}>
-                  {age} anos
+                  {t('age_unit', { age })}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="mb-3 block text-sm font-medium text-gray-700">Avatar</label>
+            <label className="mb-3 block text-sm font-medium text-gray-700">{t('avatar_label')}</label>
             <AvatarPicker
               selectedId={selectedAvatar}
               onSelect={(avatarId: string) => {
@@ -231,22 +234,20 @@ export default function EditChildPage() {
 
           <div>
             <label htmlFor="pin" className="mb-2 block text-sm font-medium text-gray-700">
-              Novo PIN (opcional)
+              {t('pin_label')}
             </label>
             <input
               {...form.register('pin')}
               type="password"
               id="pin"
               maxLength={4}
-              placeholder={child.pin_set ? '••••' : 'Sem PIN configurado'}
+              placeholder={child.pin_set ? t('pin_placeholder_set') : t('pin_placeholder_unset')}
               className="w-32 rounded-md border border-gray-300 px-3 py-2 text-center font-mono text-lg shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
             {form.formState.errors.pin && (
               <p className="mt-1 text-sm text-red-600">{form.formState.errors.pin.message}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              Deixe vazio para manter o PIN atual.
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t('pin_hint')}</p>
           </div>
 
           <div>
@@ -254,7 +255,7 @@ export default function EditChildPage() {
               htmlFor="daily_limit_minutes"
               className="mb-2 block text-sm font-medium text-gray-700"
             >
-              Tempo diario limite
+              {t('daily_limit_label')}
             </label>
             <div className="flex items-center space-x-3">
               <input
@@ -267,7 +268,7 @@ export default function EditChildPage() {
                 className="flex-1"
               />
               <span className="w-20 text-sm text-gray-600">
-                {form.watch('daily_limit_minutes')} min
+                {t('daily_limit_unit', { minutes: form.watch('daily_limit_minutes') })}
               </span>
             </div>
           </div>
@@ -281,7 +282,7 @@ export default function EditChildPage() {
             className="border-red-300 text-red-600 hover:bg-red-50"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Remover perfil
+            {t('remove_profile')}
           </Button>
           <Button
             type="submit"
@@ -289,11 +290,11 @@ export default function EditChildPage() {
             className="bg-purple-600 hover:bg-purple-700"
           >
             {updateMutation.isPending ? (
-              'Salvando...'
+              t('saving')
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                Salvar
+                {t('save')}
               </>
             )}
           </Button>
@@ -302,18 +303,15 @@ export default function EditChildPage() {
 
       {confirmingDelete && (
         <Card className="space-y-4 border-red-300 bg-red-50 p-6">
-          <h2 className="text-lg font-bold text-red-900">Remover {child.name}?</h2>
-          <p className="text-sm text-red-800">
-            Esta acao apaga todo o progresso e historico de conversa deste perfil.
-            Nao da pra desfazer.
-          </p>
+          <h2 className="text-lg font-bold text-red-900">{t('remove_confirm_title', { name: child.name })}</h2>
+          <p className="text-sm text-red-800">{t('remove_confirm_body')}</p>
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setConfirmingDelete(false)}
               disabled={deleteMutation.isPending}
             >
-              Cancelar
+              {t('back')}
             </Button>
             <Button
               variant="ghost"
@@ -321,7 +319,7 @@ export default function EditChildPage() {
               disabled={deleteMutation.isPending}
               className="bg-red-600 text-white hover:bg-red-700"
             >
-              {deleteMutation.isPending ? 'Removendo...' : 'Sim, remover'}
+              {deleteMutation.isPending ? t('remove_loading') : t('remove_yes')}
             </Button>
           </div>
         </Card>

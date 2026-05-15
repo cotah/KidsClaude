@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import {
   User,
   LogOut,
@@ -23,6 +24,7 @@ import { getApiErrorMessage } from '@/lib/api/client';
  * Navbar para pais com seletor de filhos e navegação.
  */
 export function ParentNavbar() {
+  const t = useTranslations('navbar_parent');
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -76,7 +78,7 @@ export function ParentNavbar() {
                 className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
                 <Home className="w-4 h-4" />
-                <span>Dashboard</span>
+                <span>{t('dashboard')}</span>
               </Link>
 
               {/* Seletor de filhos */}
@@ -87,7 +89,7 @@ export function ParentNavbar() {
                     className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                   >
                     <User className="w-4 h-4" />
-                    <span>Filhos ({children.length})</span>
+                    <span>{t('children_count', { count: children.length })}</span>
                     <ChevronDown className="w-4 h-4" />
                   </button>
 
@@ -110,7 +112,7 @@ export function ParentNavbar() {
                               <div>
                                 <p className="font-medium">{child.name}</p>
                                 <p className="text-xs text-gray-500">
-                                  {child.age} anos • Nível {child.level}
+                                  {t('child_age_level', { age: child.age, level: child.level })}
                                 </p>
                               </div>
                             </div>
@@ -132,7 +134,7 @@ export function ParentNavbar() {
                             onClick={() => setIsDropdownOpen(false)}
                             className="block px-4 py-2 text-sm text-purple-600 hover:bg-purple-50"
                           >
-                            + Adicionar filho
+                            {t('add_child_short')}
                           </Link>
                         </div>
                       </div>
@@ -149,7 +151,7 @@ export function ParentNavbar() {
             {/* Informações do usuário */}
             <div className="hidden md:block text-right">
               <p className="text-sm font-medium text-gray-900">
-                {parent?.display_name || 'Pai/Responsável'}
+                {parent?.display_name || t('default_name')}
               </p>
               <p className="text-xs text-gray-500">{parent?.email}</p>
             </div>
@@ -158,7 +160,7 @@ export function ParentNavbar() {
             <Link href="/account">
               <Button variant="ghost" size="sm">
                 <Settings className="w-4 h-4" />
-                <span className="hidden md:inline ml-2">Conta</span>
+                <span className="hidden md:inline ml-2">{t('account')}</span>
               </Button>
             </Link>
 
@@ -170,7 +172,7 @@ export function ParentNavbar() {
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden md:inline ml-2">
-                {isLoggingOut ? 'Saindo...' : 'Sair'}
+                {isLoggingOut ? t('logging_out') : t('logout')}
               </span>
             </Button>
           </div>

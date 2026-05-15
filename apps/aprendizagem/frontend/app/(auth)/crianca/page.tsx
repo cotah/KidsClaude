@@ -3,8 +3,10 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useToast } from '@/components/ui/toast';
 import { authApi } from '@/lib/api/auth';
 import useAppStore from '@/lib/store/app-store';
@@ -18,6 +20,7 @@ import { getApiErrorMessage } from '@/lib/api/client';
  * seja a causa, pra nao vazar quais usernames existem.
  */
 export default function ChildDirectLoginPage() {
+  const t = useTranslations('crianca');
   const router = useRouter();
   const { toast } = useToast();
   const { setCurrentChild, setSession } = useAppStore();
@@ -60,22 +63,24 @@ export default function ChildDirectLoginPage() {
 
       toast({
         type: 'success',
-        title: `Oi, ${response.child.name}!`,
-        description: 'Pronto para aprender?',
+        title: t('toast_welcome_title', { name: response.child.name }),
+        description: t('toast_welcome_desc'),
       });
 
       router.push('/play');
     } catch (error: any) {
       // Generico em qualquer 401/404. 429 = rate limit.
-      let message = 'Utilizador ou PIN incorretos';
+      let message = t('error_invalid');
       if (error?.status === 429) {
-        message = 'Demasiadas tentativas. Tenta novamente em alguns minutos.';
+        message = t('error_rate_limited');
       } else if (error?.status >= 500) {
-        message = 'Erro no servidor. Tenta novamente em instantes.';
+        message = t('error_server');
       } else {
         // Tenta extrair mensagem do backend; cai no generico se nao houver.
         const fromApi = getApiErrorMessage(error);
-        if (fromApi && fromApi !== 'Erro desconhecido') message = fromApi;
+        if (fromApi && fromApi !== 'Erro desconhecido' && fromApi !== 'Erro inesperado') {
+          message = fromApi;
+        }
       }
       setErrorMessage(message);
       setPin('');
@@ -95,19 +100,20 @@ export default function ChildDirectLoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
         <div className="text-center space-y-2">
           <div className="text-6xl">🤖</div>
-          <h1 className="text-kid-2xl font-bold text-gray-800">Bem-vindo!</h1>
-          <p className="text-kid-base text-gray-600">
-            Entra com o teu nome de utilizador e PIN.
-          </p>
+          <h1 className="text-kid-2xl font-bold text-gray-800">{t('title')}</h1>
+          <p className="text-kid-base text-gray-600">{t('subtitle')}</p>
         </div>
 
         <div className="bg-white rounded-kid-lg shadow-lg p-6 space-y-6">
           {/* Username */}
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-              Nome de utilizador
+              {t('username_label')}
             </label>
             <input
               id="username"
@@ -122,17 +128,15 @@ export default function ChildDirectLoginPage() {
                 setUsername(e.target.value);
               }}
               className="w-full px-4 py-3 text-kid-base border-2 border-sunny-200 rounded-kid focus:outline-none focus:border-sunny-500 focus:ring-2 focus:ring-sunny-200"
-              placeholder="ex: valentina2026"
+              placeholder={t('username_placeholder')}
               disabled={isSubmitting}
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Letras minúsculas, números e hífens. Mínimo 3 caracteres.
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t('username_hint')}</p>
           </div>
 
           {/* PIN display */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">PIN</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('pin_label')}</label>
             <div className="flex justify-center space-x-3 mb-4">
               {Array.from({ length: 4 }).map((_, index) => (
                 <div
@@ -197,7 +201,7 @@ export default function ChildDirectLoginPage() {
             onClick={handleSubmit}
             disabled={!isReady}
           >
-            {isSubmitting ? 'A entrar...' : 'Entrar'}
+            {isSubmitting ? t('submitting') : t('submit')}
           </Button>
         </div>
 
@@ -208,7 +212,7 @@ export default function ChildDirectLoginPage() {
             className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 underline"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            És pai/responsável? Entra aqui
+            {t('parent_link')}
           </Link>
         </div>
       </div>

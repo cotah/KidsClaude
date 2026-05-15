@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { LogOut, Star, Award, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,6 +21,7 @@ import type { Child } from '@/types/api';
  * Navbar para crianças com mascote, XP, streak e saída.
  */
 export function ChildNavbar() {
+  const t = useTranslations('navbar_child');
   const router = useRouter();
   const { currentChild, setCurrentChild } = useAppStore();
 
@@ -98,9 +100,7 @@ export function ChildNavbar() {
             </div>
             <div>
               <MascotBubble variant="cheerful">
-                <span className="text-sm">
-                  Oi, {childData.name}! Pronto para aprender?
-                </span>
+                <span className="text-sm">{t('greeting', { name: childData.name })}</span>
               </MascotBubble>
             </div>
           </div>
@@ -112,13 +112,13 @@ export function ChildNavbar() {
               <div className="flex items-center space-x-2 mb-1">
                 <Star className="w-4 h-4 text-yellow-500" />
                 <span className="font-bold text-purple-700 text-lg">
-                  Nível {childData.level}
+                  {t('level_label', { level: childData.level })}
                 </span>
               </div>
               <div className="w-32">
                 <Progress value={progressToNextLevel} className="h-2" />
                 <p className="text-xs text-gray-600 mt-1">
-                  {childData.xp} / {nextLevelXp} XP
+                  {t('xp_progress', { current: childData.xp, max: nextLevelXp })}
                 </p>
               </div>
             </div>
@@ -129,7 +129,7 @@ export function ChildNavbar() {
                 <Flame className="w-5 h-5 text-orange-500" />
                 <div className="text-center">
                   <p className="font-bold text-orange-700">{childData.streak_days}</p>
-                  <p className="text-xs text-orange-600">dias</p>
+                  <p className="text-xs text-orange-600">{t('days')}</p>
                 </div>
               </div>
             )}
@@ -140,7 +140,7 @@ export function ChildNavbar() {
               <div className="text-center">
                 <p className="font-bold text-yellow-700">{badgeCount}</p>
                 <p className="text-xs text-yellow-600">
-                  {badgeCount === 1 ? 'badge' : 'badges'}
+                  {badgeCount === 1 ? t('badges_one') : t('badges_other')}
                 </p>
               </div>
             </div>
@@ -165,7 +165,7 @@ export function ChildNavbar() {
               className="text-gray-600 hover:text-gray-800"
             >
               <LogOut className="w-4 h-4 mr-1" />
-              Sair
+              {t('logout')}
             </Button>
           </div>
         </div>

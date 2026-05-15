@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { stagesApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { XPProgress, StreakProgress } from '@/components/ui/progress';
@@ -15,6 +16,7 @@ import { calculateLevelInfo } from '@/lib/utils';
  * Hub principal da criança - agora com 4-stage curriculum conforme spec redesign seção 7.1
  */
 export default function PlayPage() {
+  const t = useTranslations('play');
   const { currentChild } = useAppStore();
   const [greeting, setGreeting] = React.useState('');
 
@@ -39,25 +41,23 @@ export default function PlayPage() {
     if (currentChild) {
       const hour = new Date().getHours();
       if (hour < 12) {
-        setGreeting('Bom dia');
+        setGreeting(t('good_morning'));
       } else if (hour < 18) {
-        setGreeting('Boa tarde');
+        setGreeting(t('good_afternoon'));
       } else {
-        setGreeting('Boa noite');
+        setGreeting(t('good_evening'));
       }
     }
-  }, [currentChild]);
+  }, [currentChild, t]);
 
   if (!currentChild) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="text-6xl">🤔</div>
-          <p className="text-kid-lg text-gray-600">
-            Ops! Você precisa escolher seu perfil primeiro.
-          </p>
+          <p className="text-kid-lg text-gray-600">{t('guard_pick_profile')}</p>
           <Button variant="sunny" size="kid-lg" asChild>
-            <Link href="/select">Escolher Perfil</Link>
+            <Link href="/select">{t('guard_pick_button')}</Link>
           </Button>
         </div>
       </div>
@@ -94,7 +94,7 @@ export default function PlayPage() {
               asChild
               className="text-gray-600 hover:text-gray-800"
             >
-              <Link href="/play/switch-profile">Trocar Perfil</Link>
+              <Link href="/play/switch-profile">{t('switch_profile')}</Link>
             </Button>
           </div>
 
@@ -117,18 +117,21 @@ export default function PlayPage() {
           <MascotBubble variant="encouraging" className="flex-1">
             <div className="space-y-2">
               <p>
-                Que legal ter você aqui! Você está no nível{' '}
-                <strong>{levelInfo.current} - {levelInfo.name}</strong>.
+                {t.rich('mascot_level_intro', {
+                  level: levelInfo.current,
+                  name: levelInfo.name,
+                  b: (chunks) => <strong>{chunks}</strong>,
+                })}
               </p>
               {currentChild.streak_days > 0 ? (
                 <p>
-                  Continue assim! Você tem uma sequência incrível de{' '}
-                  <strong>{currentChild.streak_days} dias</strong> aprendendo! 🔥
+                  {t.rich('mascot_streak', {
+                    days: currentChild.streak_days,
+                    b: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </p>
               ) : (
-                <p>
-                  Vamos começar uma nova aventura de aprendizado! Que tal fazer uma lição?
-                </p>
+                <p>{t('mascot_no_streak')}</p>
               )}
             </div>
           </MascotBubble>
@@ -138,11 +141,9 @@ export default function PlayPage() {
         <section className="space-y-6">
           <div className="text-center">
             <h2 className="text-kid-2xl font-bold text-gray-800 mb-2">
-              Seu Caminho de Aprendizado
+              {t('section_path_title')}
             </h2>
-            <p className="text-kid-base text-gray-600">
-              Complete as 4 stages e desbloqueie o projeto final!
-            </p>
+            <p className="text-kid-base text-gray-600">{t('section_path_subtitle')}</p>
           </div>
 
           {/* Ordem do branch: error > pending > sem dados/sem stages > grid.
@@ -151,34 +152,26 @@ export default function PlayPage() {
               flash de branco entre o primeiro render e a chegada dos dados. */}
           {isStagesError ? (
             <div className="text-center text-red-600 bg-white/80 rounded-kid-lg p-6">
-              <p className="text-kid-base font-medium mb-2">
-                Não foi possível carregar as stages.
-              </p>
+              <p className="text-kid-base font-medium mb-2">{t('stages_load_error_title')}</p>
               <p className="text-kid-sm text-red-500">
-                {stagesError instanceof Error ? stagesError.message : 'Erro desconhecido'}
+                {stagesError instanceof Error ? stagesError.message : t('stages_load_error_unknown')}
               </p>
             </div>
           ) : isStagesPending || !stagesData ? (
             <div className="space-y-8">
-              {/* Mock das 4 stages + final exam */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-56 rounded-kid-lg bg-gray-200 animate-pulse"
-                  />
+                  <div key={index} className="h-56 rounded-kid-lg bg-gray-200 animate-pulse" />
                 ))}
               </div>
               <div className="flex justify-center">
                 <div className="w-full max-w-md h-48 rounded-kid-lg bg-gradient-to-br from-purple-200 to-yellow-200 animate-pulse" />
               </div>
-              <p className="text-center text-kid-sm text-gray-500">Carregando...</p>
+              <p className="text-center text-kid-sm text-gray-500">{t('loading')}</p>
             </div>
           ) : !stagesData.stages || stagesData.stages.length === 0 ? (
             <div className="text-center text-gray-600 bg-white/60 rounded-kid-lg p-6">
-              <p className="text-kid-base font-medium">
-                Nenhuma stage encontrada — recarregue a página.
-              </p>
+              <p className="text-kid-base font-medium">{t('no_stages')}</p>
             </div>
           ) : (
             <StageGrid stagesData={stagesData} />
@@ -189,14 +182,12 @@ export default function PlayPage() {
         <section className="space-y-6">
           <div className="text-center">
             <h2 className="text-kid-2xl font-bold text-gray-800 mb-2">
-              Suas Conquistas
+              {t('section_achievements')}
             </h2>
           </div>
           <div className="flex justify-center">
             <Button variant="mint" size="kid-lg" asChild>
-              <Link href="/play/badges">
-                Ver Todas as Conquistas 🏆
-              </Link>
+              <Link href="/play/badges">{t('view_all_badges')}</Link>
             </Button>
           </div>
         </section>

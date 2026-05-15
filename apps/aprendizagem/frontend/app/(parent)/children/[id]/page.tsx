@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { ArrowLeft, Edit, MessageSquare, Shield, BarChart3, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -49,6 +50,7 @@ interface PageProps {
  */
 export default async function ChildDetailPage({ params }: PageProps) {
   const { id } = await params;
+  const t = await getTranslations('children_detail');
 
   // Buscar dados em paralelo
   const [child, progressRaw, badgesRaw, usageRaw] = await Promise.all([
@@ -99,7 +101,7 @@ export default async function ChildDetailPage({ params }: PageProps) {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Dashboard
+              {t('back')}
             </Button>
           </Link>
           <div>
@@ -117,7 +119,10 @@ export default async function ChildDetailPage({ params }: PageProps) {
               )}
             </h1>
             <p className="text-gray-600">
-              {child.age} anos • {config.gamification.levelNames[currentLevel - 1] || `Nível ${currentLevel}`}
+              {t('age_with_level', {
+                age: child.age,
+                level_name: config.gamification.levelNames[currentLevel - 1] || t('level_n', { level: currentLevel }),
+              })}
             </p>
           </div>
         </div>
@@ -126,19 +131,19 @@ export default async function ChildDetailPage({ params }: PageProps) {
           <Link href={`/children/${child.id}/sessions`}>
             <Button variant="outline" size="sm">
               <MessageSquare className="w-4 h-4 mr-2" />
-              Conversas
+              {t('conversations')}
             </Button>
           </Link>
           <Link href={`/children/${child.id}/safety`}>
             <Button variant="outline" size="sm">
               <Shield className="w-4 h-4 mr-2" />
-              Segurança
+              {t('safety')}
             </Button>
           </Link>
           <Link href={`/children/${child.id}/edit`}>
             <Button variant="outline" size="sm">
               <Edit className="w-4 h-4 mr-2" />
-              Editar
+              {t('edit')}
             </Button>
           </Link>
         </div>
@@ -149,7 +154,7 @@ export default async function ChildDetailPage({ params }: PageProps) {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Nível atual</p>
+              <p className="text-sm font-medium text-gray-600">{t('current_level')}</p>
               <p className="text-2xl font-bold text-gray-900">{currentLevel}</p>
             </div>
             <BarChart3 className="w-8 h-8 text-purple-500" />
@@ -157,7 +162,7 @@ export default async function ChildDetailPage({ params }: PageProps) {
           <div className="mt-4">
             <Progress value={progressToNextLevel} className="h-2" />
             <p className="text-xs text-gray-500 mt-1">
-              {totalXp} / {nextLevelXp} XP para o próximo nível
+              {t('xp_to_next', { current: totalXp, next: nextLevelXp })}
             </p>
           </div>
         </Card>
@@ -165,20 +170,20 @@ export default async function ChildDetailPage({ params }: PageProps) {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Lições concluídas</p>
+              <p className="text-sm font-medium text-gray-600">{t('lessons_completed')}</p>
               <p className="text-2xl font-bold text-gray-900">{completedLessons}</p>
             </div>
             <Award className="w-8 h-8 text-green-500" />
           </div>
           <p className="text-xs text-gray-500 mt-4">
-            {progress.length - completedLessons} em andamento
+            {t('in_progress', { count: progress.length - completedLessons })}
           </p>
         </Card>
 
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Badges desbloqueados</p>
+              <p className="text-sm font-medium text-gray-600">{t('badges_unlocked')}</p>
               <p className="text-2xl font-bold text-gray-900">{badges.length}</p>
             </div>
             <Badge className="w-8 h-8 text-yellow-500" />
@@ -188,12 +193,12 @@ export default async function ChildDetailPage({ params }: PageProps) {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Tempo hoje</p>
-              <p className="text-2xl font-bold text-gray-900">{todayUsage}min</p>
+              <p className="text-sm font-medium text-gray-600">{t('today_time')}</p>
+              <p className="text-2xl font-bold text-gray-900">{t('minutes_short', { n: todayUsage })}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">
-                de {child.daily_limit_minutes}min
+                {t('of_limit', { limit: child.daily_limit_minutes })}
               </p>
               <div className="w-12 h-1 bg-gray-200 rounded-full mt-1">
                 <div

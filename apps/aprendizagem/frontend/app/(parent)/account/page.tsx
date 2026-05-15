@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { LogOut, Mail, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,11 +11,8 @@ import { authApi } from '@/lib/api/auth';
 import { getApiErrorMessage } from '@/lib/api/client';
 import type { Route } from 'next';
 
-/**
- * Pagina de conta do responsavel: exibe dados do perfil e oferece logout.
- * Endpoints adicionais (trocar senha, excluir conta) ficam para fase 2.
- */
 export default function AccountPage() {
+  const t = useTranslations('account');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -30,7 +28,7 @@ export default function AccountPage() {
     } catch (err) {
       toast({
         type: 'error',
-        title: 'Erro ao sair',
+        title: t('logout_error_title'),
         description: getApiErrorMessage(err),
       });
     }
@@ -39,10 +37,8 @@ export default function AccountPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Minha conta</h1>
-        <p className="text-gray-600">
-          Dados do seu perfil de responsavel. Voce pode encerrar a sessao aqui.
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-gray-600">{t('subtitle')}</p>
       </div>
 
       <Card className="space-y-4 p-6">
@@ -56,16 +52,16 @@ export default function AccountPage() {
             <div className="flex items-center gap-3">
               <User className="h-5 w-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Nome</p>
+                <p className="text-sm text-gray-500">{t('name_label')}</p>
                 <p className="font-medium text-gray-900">
-                  {parent.display_name || 'Sem nome'}
+                  {parent.display_name || t('no_name')}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Email</p>
+                <p className="text-sm text-gray-500">{t('email_label')}</p>
                 <p className="font-medium text-gray-900">{parent.email}</p>
               </div>
             </div>
@@ -74,17 +70,15 @@ export default function AccountPage() {
       </Card>
 
       <Card className="space-y-3 p-6">
-        <h2 className="text-base font-semibold text-gray-900">Sessao</h2>
-        <p className="text-sm text-gray-600">
-          Encerrar sua sessao remove os cookies de autenticacao deste navegador.
-        </p>
+        <h2 className="text-base font-semibold text-gray-900">{t('session_title')}</h2>
+        <p className="text-sm text-gray-600">{t('session_desc')}</p>
         <Button
           variant="outline"
           onClick={handleLogout}
           className="border-red-300 text-red-600 hover:bg-red-50"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Sair da conta
+          {t('logout')}
         </Button>
       </Card>
     </div>

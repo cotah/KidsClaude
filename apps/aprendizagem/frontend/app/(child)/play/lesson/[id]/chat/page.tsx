@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import type { Route } from 'next';
 import { ArrowLeft, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ const TYPING_SPEED_MS = 18;
  * a resposta apos receber via POST /v1/chat/sessions/:id/messages.
  */
 export default function ChatPage() {
+  const t = useTranslations('chat_page');
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
@@ -73,7 +75,7 @@ export default function ChatPage() {
         if (!cancelled) {
           toast({
             type: 'error',
-            title: 'Nao consegui abrir a conversa',
+            title: t('toast_open_error_title'),
             description: getApiErrorMessage(err),
           });
         }
@@ -181,8 +183,7 @@ export default function ChatPage() {
           id: `mascot-${Date.now()}`,
           session_id: sessionId,
           role: 'assistant',
-          content:
-            'Vamos escolher outro caminho? Esse pedido nao da pra responder agora. Tente uma sugestao diferente!',
+          content: t('refusal_message'),
           moderation_status: 'passed',
           created_at: new Date().toISOString(),
         };
@@ -192,14 +193,14 @@ export default function ChatPage() {
       } else if (code === 'RATE_LIMITED') {
         toast({
           type: 'warning',
-          title: 'Muitas mensagens',
-          description: 'Voce ja conversou bastante por aqui. Vamos fazer outra coisa?',
+          title: t('toast_too_many_messages_title'),
+          description: t('toast_too_many_messages_desc'),
         });
         setPending(false);
       } else {
         toast({
           type: 'error',
-          title: 'Algo deu errado',
+          title: t('toast_generic_error_title'),
           description: getApiErrorMessage(err),
         });
         setPending(false);
@@ -277,11 +278,11 @@ export default function ChatPage() {
           onClick={() => router.push(`/play/lesson/${lessonId}` as Route)}
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Voltar
+          {t('back')}
         </Button>
         <div className="flex flex-1 items-center justify-center gap-2">
           <h1 className="text-lg font-bold text-gray-800">
-            Conversar sobre: {lesson.title}
+            {t('talk_about', { title: lesson.title })}
           </h1>
         </div>
         <SafetyStrikes strikes={strikes} max={MAX_STRIKES} />
@@ -295,9 +296,7 @@ export default function ChatPage() {
         {messages.length === 0 && !pending ? (
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <Mascot size="lg" expression="happy" />
-            <MascotBubble variant="encouraging">
-              Oi! Escolha uma das sugestoes abaixo para comecar a conversar.
-            </MascotBubble>
+            <MascotBubble variant="encouraging">{t('mascot_intro')}</MascotBubble>
           </div>
         ) : (
           <ChatBubbles messages={messages} pending={pending} pendingText={pendingText} />
@@ -308,18 +307,17 @@ export default function ChatPage() {
       {sessionEnded ? (
         <Card className="flex flex-col items-center gap-3 border-sunset-300 bg-sunset-50 p-6 text-center">
           <Mascot size="md" expression="sleeping" />
-          <h2 className="text-lg font-bold text-sunset-900">Conversa encerrada</h2>
+          <h2 className="text-lg font-bold text-sunset-900">{t('session_ended_title')}</h2>
           <p className="text-sm text-sunset-800">
-            Tivemos {MAX_STRIKES} avisos seguidos, entao por seguranca encerrei a
-            conversa. Vamos para a proxima!
+            {t('session_ended_body', { max: MAX_STRIKES })}
           </p>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => handleEndSession(false)}>
               <X className="mr-1 h-4 w-4" />
-              Sair
+              {t('exit')}
             </Button>
             <Button variant="sunny" onClick={() => handleEndSession(true)}>
-              Continuar
+              {t('continue')}
             </Button>
           </div>
         </Card>
@@ -327,7 +325,7 @@ export default function ChatPage() {
         <Card className="space-y-3 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-700">
-              {hasInteracted ? 'Escreve a tua resposta' : 'Escolha uma sugestao para começar'}
+              {hasInteracted ? t('footer_write_reply') : t('footer_pick_to_start')}
             </p>
             <Button
               variant="ghost"
@@ -335,13 +333,11 @@ export default function ChatPage() {
               onClick={() => handleEndSession(true)}
               disabled={pending}
             >
-              Encerrar conversa
+              {t('end_chat')}
             </Button>
           </div>
 
           {hasInteracted ? (
-            // Modo texto livre: input com contador + botao enviar + Enter.
-            // Disabled enquanto Claude esta animando (pending).
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <input
@@ -349,7 +345,7 @@ export default function ChatPage() {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value.slice(0, FREE_TEXT_MAX_LENGTH))}
                   onKeyDown={handleInputKeyDown}
-                  placeholder="Escreve aqui a tua resposta... 💬"
+                  placeholder={t('input_placeholder')}
                   maxLength={FREE_TEXT_MAX_LENGTH}
                   disabled={pending || !sessionId}
                   className="flex-1 rounded-2xl border-2 border-grape-200 bg-white px-4 py-3 text-base focus:border-grape-400 focus:outline-none focus:ring-2 focus:ring-grape-200 disabled:bg-gray-100 disabled:text-gray-500"
@@ -360,13 +356,13 @@ export default function ChatPage() {
                   size="kid-icon"
                   onClick={sendFreeText}
                   disabled={pending || !sessionId || !inputText.trim()}
-                  aria-label="Enviar mensagem"
+                  aria-label={t('input_send_label')}
                 >
                   <Send className="h-5 w-5" />
                 </Button>
               </div>
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Pressiona Enter pra enviar</span>
+                <span>{t('input_press_enter')}</span>
                 <span
                   className={
                     inputText.length >= FREE_TEXT_MAX_LENGTH
@@ -374,7 +370,7 @@ export default function ChatPage() {
                       : ''
                   }
                 >
-                  {inputText.length}/{FREE_TEXT_MAX_LENGTH}
+                  {t('input_counter', { current: inputText.length, max: FREE_TEXT_MAX_LENGTH })}
                 </span>
               </div>
             </div>

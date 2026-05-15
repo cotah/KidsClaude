@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Volume2, ArrowRight, ArrowLeft } from 'lucide-react';
 import type { Route } from 'next';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { lessonsApi } from '@/lib/api/lessons';
  * Implementa narração via Web Speech API conforme spec
  */
 export default function LessonPage() {
+  const t = useTranslations('lesson_player');
   const params = useParams();
   const router = useRouter();
   const lessonId = params.id as string;
@@ -101,10 +103,8 @@ export default function LessonPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="p-8 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Lição não encontrada</h2>
-          <Button onClick={() => router.push('/play')}>
-            Voltar ao início
-          </Button>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('not_found_title')}</h2>
+          <Button onClick={() => router.push('/play')}>{t('back_home')}</Button>
         </Card>
       </div>
     );
@@ -121,13 +121,13 @@ export default function LessonPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{lesson.title}</h1>
             <p className="text-gray-600">
-              Bloco {currentBlock + 1} de {lesson.content_blocks.length}
+              {t('block_progress', { current: currentBlock + 1, total: lesson.content_blocks.length })}
             </p>
           </div>
           <div className="text-right min-w-[100px]">
-            <p className="text-sm text-gray-600">Progresso</p>
+            <p className="text-sm text-gray-600">{t('progress_label')}</p>
             <p className="text-lg font-bold text-purple-600">
-              {Math.round(progress)}%
+              {t('progress_percent', { percent: Math.round(progress) })}
             </p>
           </div>
         </div>
@@ -153,7 +153,7 @@ export default function LessonPage() {
             {block.type === 'image' && (
               <div className="aspect-video bg-gradient-to-br from-blue-100 to-emerald-100 rounded-lg flex items-center justify-center">
                 <p className="text-blue-700 font-medium">
-                  ✨ Imagem: {block.alt || block.src || block.content || 'em breve'}
+                  ✨ {t('image_placeholder', { alt: block.alt || block.src || block.content || t('image_default_alt') })}
                 </p>
               </div>
             )}
@@ -161,7 +161,7 @@ export default function LessonPage() {
             {block.type === 'video' && (
               <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
                 <p className="text-gray-500">
-                  📹 Vídeo: {block.content || 'Carregando...'}
+                  📹 {t('video_placeholder', { label: block.content || t('video_default_label') })}
                 </p>
               </div>
             )}
@@ -169,7 +169,7 @@ export default function LessonPage() {
             {block.type === 'animation' && (
               <div className="aspect-square bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center">
                 <p className="text-purple-700 font-medium">
-                  ✨ Animação: {block.content || 'Interativa'}
+                  ✨ {t('animation_placeholder', { label: block.content || t('animation_default_label') })}
                 </p>
               </div>
             )}
@@ -182,7 +182,7 @@ export default function LessonPage() {
               size="sm"
               onClick={() => handleNarration(block.content)}
               className="ml-4 flex-shrink-0"
-              title="Ouvir narração"
+              title={t('narration_title')}
             >
               <Volume2 className="w-5 h-5" />
             </Button>
@@ -198,7 +198,7 @@ export default function LessonPage() {
           disabled={currentBlock === 0}
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Anterior
+          {t('previous')}
         </Button>
 
         <div className="flex space-x-2">
@@ -224,12 +224,12 @@ export default function LessonPage() {
         >
           {currentBlock === lesson.content_blocks.length - 1 ? (
             <>
-              Desafio
+              {t('challenge')}
               <ArrowRight className="w-4 h-4 ml-2" />
             </>
           ) : (
             <>
-              Próximo
+              {t('next')}
               <ArrowRight className="w-4 h-4 ml-2" />
             </>
           )}

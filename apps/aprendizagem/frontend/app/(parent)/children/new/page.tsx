@@ -1,11 +1,13 @@
 'use client';
 
+import * as React from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -15,40 +17,47 @@ import { childrenApi } from '@/lib/api/children';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { config } from '@/lib/config';
 
-const childSchema = z.object({
-  name: z.string()
-    .min(1, 'Nome obrigatório')
-    .max(config.limits.childNameMaxLength, `Nome deve ter no máximo ${config.limits.childNameMaxLength} caracteres`),
-  // username e' o login da crianca em /crianca. Lowercase + digitos + hifen,
-  // 3-30 chars. Mesmo padrao validado no backend (schemas/children.py).
-  username: z.string()
-    .min(3, 'Mínimo 3 caracteres')
-    .max(30, 'Máximo 30 caracteres')
-    .regex(/^[a-z0-9-]+$/, 'Apenas letras minúsculas, números e hífens'),
-  age: z.number()
-    .min(6, 'Idade mínima: 6 anos')
-    .max(12, 'Idade máxima: 12 anos'),
-  avatar_id: z.string().min(1, 'Avatar obrigatório'),
-  pin: z.string()
-    .length(4, 'PIN deve ter 4 dígitos')
-    .regex(/^\d{4}$/, 'PIN deve conter apenas números')
-    .optional()
-    .or(z.literal('')),
-  daily_limit_minutes: z.number()
-    .min(config.limits.minDailyLimitMinutes, `Mínimo: ${config.limits.minDailyLimitMinutes} min`)
-    .max(config.limits.maxDailyLimitMinutes, `Máximo: ${config.limits.maxDailyLimitMinutes} min`),
-});
-
-type ChildFormData = z.infer<typeof childSchema>;
-
 /**
  * Página para criar novo filho.
  * Form com validação + avatar picker + configuração de PIN e limite diário.
  */
 export default function CreateChildPage() {
+  const t = useTranslations('children_new');
   const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedAvatar, setSelectedAvatar] = useState<string>('');
+
+  // Schema reconstroi com t no useMemo pra que validation messages mudem
+  // com o locale. Antes era global com strings PT hardcoded.
+  const childSchema = React.useMemo(
+    () =>
+      z.object({
+        name: z
+          .string()
+          .min(1, t('name_required'))
+          .max(config.limits.childNameMaxLength, t('name_max', { max: config.limits.childNameMaxLength })),
+        username: z
+          .string()
+          .min(3, t('username_min'))
+          .max(30, t('username_max'))
+          .regex(/^[a-z0-9-]+$/, t('username_format')),
+        age: z.number().min(6, t('age_min')).max(12, t('age_max')),
+        avatar_id: z.string().min(1, t('avatar_required')),
+        pin: z
+          .string()
+          .length(4, t('pin_length'))
+          .regex(/^\d{4}$/, t('pin_digits'))
+          .optional()
+          .or(z.literal('')),
+        daily_limit_minutes: z
+          .number()
+          .min(config.limits.minDailyLimitMinutes, t('daily_limit_min', { min: config.limits.minDailyLimitMinutes }))
+          .max(config.limits.maxDailyLimitMinutes, t('daily_limit_max', { max: config.limits.maxDailyLimitMinutes })),
+      }),
+    [t]
+  );
+
+  type ChildFormData = z.infer<typeof childSchema>;
 
   const form = useForm<ChildFormData>({
     resolver: zodResolver(childSchema),
@@ -105,14 +114,12 @@ export default function CreateChildPage() {
         <Link href="/dashboard">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+            {t('back')}
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Adicionar filho</h1>
-          <p className="text-gray-600">
-            Configure o perfil do seu filho para ele usar o Aprendizagem
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-gray-600">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -122,29 +129,27 @@ export default function CreateChildPage() {
           {/* Nome */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-              Nome ou apelido *
+              {t('name_label')}
             </label>
             <input
               {...form.register('name')}
               type="text"
               id="name"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="Como seu filho quer ser chamado?"
+              placeholder={t('name_placeholder')}
             />
             {form.formState.errors.name && (
               <p className="mt-1 text-sm text-red-600">
                 {form.formState.errors.name.message}
               </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              Use um apelido, não precisa ser o nome completo
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t('name_hint')}</p>
           </div>
 
           {/* Username (login direto) */}
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-              Nome de utilizador *
+              {t('username_label')}
             </label>
             <input
               {...form.register('username')}
@@ -154,22 +159,20 @@ export default function CreateChildPage() {
               autoCorrect="off"
               spellCheck={false}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="ex: valentina2026"
+              placeholder={t('username_placeholder')}
             />
             {form.formState.errors.username && (
               <p className="mt-1 text-sm text-red-600">
                 {form.formState.errors.username.message}
               </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              Este será o nome de login da criança. Ex: valentina2026
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t('username_hint')}</p>
           </div>
 
           {/* Idade */}
           <div>
             <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-2">
-              Idade *
+              {t('age_label')}
             </label>
             <select
               {...form.register('age', { valueAsNumber: true })}
@@ -178,7 +181,7 @@ export default function CreateChildPage() {
             >
               {Array.from({ length: 7 }, (_, i) => i + 6).map(age => (
                 <option key={age} value={age}>
-                  {age} anos
+                  {t('age_unit', { age })}
                 </option>
               ))}
             </select>
@@ -192,7 +195,7 @@ export default function CreateChildPage() {
           {/* Avatar */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Avatar *
+              {t('avatar_label')}
             </label>
             <AvatarPicker
               selectedId={selectedAvatar}
@@ -212,7 +215,7 @@ export default function CreateChildPage() {
           {/* PIN */}
           <div>
             <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
-              PIN de segurança (opcional)
+              {t('pin_label')}
             </label>
             <input
               {...form.register('pin')}
@@ -220,22 +223,20 @@ export default function CreateChildPage() {
               id="pin"
               maxLength={4}
               className="w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-center text-lg"
-              placeholder="••••"
+              placeholder={t('pin_placeholder')}
             />
             {form.formState.errors.pin && (
               <p className="mt-1 text-sm text-red-600">
                 {form.formState.errors.pin.message}
               </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              4 dígitos para proteger o acesso. Deixe vazio se não quiser PIN.
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t('pin_hint')}</p>
           </div>
 
           {/* Limite diário */}
           <div>
             <label htmlFor="daily_limit_minutes" className="block text-sm font-medium text-gray-700 mb-2">
-              Tempo diário limite *
+              {t('daily_limit_label')}
             </label>
             <div className="flex items-center space-x-3">
               <input
@@ -248,7 +249,7 @@ export default function CreateChildPage() {
                 className="flex-1"
               />
               <span className="text-sm text-gray-600 w-20">
-                {form.watch('daily_limit_minutes')} min
+                {t('daily_limit_unit', { minutes: form.watch('daily_limit_minutes') })}
               </span>
             </div>
             {form.formState.errors.daily_limit_minutes && (
@@ -256,9 +257,7 @@ export default function CreateChildPage() {
                 {form.formState.errors.daily_limit_minutes.message}
               </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              Tempo máximo por dia que seu filho pode usar o app
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t('daily_limit_hint')}</p>
           </div>
         </Card>
 
@@ -275,7 +274,7 @@ export default function CreateChildPage() {
         <div className="flex justify-end space-x-3">
           <Link href="/dashboard">
             <Button type="button" variant="outline">
-              Cancelar
+              {t('cancel')}
             </Button>
           </Link>
           <Button
@@ -284,11 +283,11 @@ export default function CreateChildPage() {
             className="bg-purple-600 hover:bg-purple-700"
           >
             {createChildMutation.isPending ? (
-              'Criando...'
+              t('submitting')
             ) : (
               <>
                 <Save className="w-4 h-4 mr-2" />
-                Criar perfil
+                {t('submit')}
               </>
             )}
           </Button>

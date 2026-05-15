@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import type { Route } from 'next';
 import { Sparkles, Trophy, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import type { Child, LessonCompletionResponse } from '@/types/api';
  * XP ganho, level up e badges desbloqueados.
  */
 export default function LessonDonePage() {
+  const t = useTranslations('done');
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -83,7 +85,7 @@ export default function LessonDonePage() {
           <Mascot size="md" expression="thinking" />
           <p className="text-base text-gray-700">{error}</p>
           <Button variant="outline" onClick={() => router.push('/play' as Route)}>
-            Voltar para o inicio
+            {t('back_home')}
           </Button>
         </Card>
       </div>
@@ -111,15 +113,15 @@ export default function LessonDonePage() {
         </div>
 
         <MascotBubble variant="excited">
-          <strong>Parabens!</strong> Voce concluiu mais uma licao!
+          {t.rich('mascot_congrats_html', { b: (chunks) => <strong>{chunks}</strong> })}
         </MascotBubble>
 
         {/* Banner do XP recem-ganho. Quando xp_earned=0 (re-conclusao),
             esconde a faixa pra nao confundir a crianca com "+0 XP". */}
         {xp_earned > 0 && (
           <div className="rounded-xl border-2 border-sunny-400 bg-sunny-100 p-3">
-            <p className="text-2xl font-extrabold text-sunny-800">+{xp_earned} XP!</p>
-            <p className="text-xs text-sunny-700">recompensa desta licao</p>
+            <p className="text-2xl font-extrabold text-sunny-800">{t('xp_earned_label', { xp: xp_earned })}</p>
+            <p className="text-xs text-sunny-700">{t('xp_earned_caption')}</p>
           </div>
         )}
 
@@ -127,12 +129,12 @@ export default function LessonDonePage() {
           <div className="rounded-xl border border-sunny-300 bg-white p-4">
             <Zap className="mx-auto h-8 w-8 text-sunny-500" />
             <p className="mt-2 text-3xl font-extrabold text-sunny-700">{xp_total}</p>
-            <p className="text-sm text-gray-600">XP total</p>
+            <p className="text-sm text-gray-600">{t('xp_total')}</p>
           </div>
           <div className="rounded-xl border border-grape-300 bg-white p-4">
             <Trophy className="mx-auto h-8 w-8 text-grape-500" />
             <p className="mt-2 text-3xl font-extrabold text-grape-700">{level}</p>
-            <p className="text-sm text-gray-600">Nivel</p>
+            <p className="text-sm text-gray-600">{t('level_label')}</p>
           </div>
         </div>
 
@@ -140,7 +142,7 @@ export default function LessonDonePage() {
           <div className="space-y-3 rounded-xl border-2 border-dashed border-sunset-300 bg-sunset-50 p-4">
             <div className="flex items-center justify-center gap-2 text-sunset-800">
               <Sparkles className="h-5 w-5" />
-              <p className="text-base font-bold">Novas conquistas!</p>
+              <p className="text-base font-bold">{t('new_achievements')}</p>
             </div>
             <ul className="space-y-2">
               {badges_unlocked.map((badge) => (
@@ -165,14 +167,14 @@ export default function LessonDonePage() {
             size="lg"
             onClick={() => router.push('/play/badges' as Route)}
           >
-            Ver minhas conquistas
+            {t('view_my_achievements')}
           </Button>
           <Button
             variant="sunny"
             size="lg"
             onClick={() => router.push('/play' as Route)}
           >
-            Continuar aprendendo
+            {t('keep_learning')}
           </Button>
         </div>
       </Card>

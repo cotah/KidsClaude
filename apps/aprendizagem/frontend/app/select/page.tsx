@@ -3,10 +3,12 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { childrenApi, authApi } from '@/lib/api';
 import { AvatarDisplay } from '@/components/avatar-picker';
 import { KidCard } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useToast } from '@/components/ui/toast';
 import useAppStore from '@/lib/store/app-store';
 import type { Child } from '@/types/api';
@@ -15,6 +17,7 @@ import type { Child } from '@/types/api';
  * Página de seleção de perfil da criança - conforme spec seção 8.4
  */
 export default function SelectProfilePage() {
+  const t = useTranslations('select');
   const router = useRouter();
   const { toast } = useToast();
   const { setCurrentChild, setSession } = useAppStore();
@@ -59,8 +62,8 @@ export default function SelectProfilePage() {
 
       toast({
         type: 'success',
-        title: `Oi, ${child.name}!`,
-        description: 'Que bom que você voltou! Vamos aprender?',
+        title: t('toast_welcome_title', { name: child.name }),
+        description: t('toast_welcome_desc'),
       });
 
       router.push('/play');
@@ -75,31 +78,30 @@ export default function SelectProfilePage() {
         if (attempts >= 3) {
           toast({
             type: 'error',
-            title: 'Muitas tentativas',
-            description: 'Tente novamente em 5 minutos ou peça ajuda para um adulto.',
+            title: t('toast_too_many_title'),
+            description: t('toast_too_many_desc'),
           });
           setSelectedChild(null);
         } else {
           toast({
             type: 'error',
-            title: 'PIN incorreto',
-            description: `Tente novamente. ${3 - attempts} tentativas restantes.`,
+            title: t('toast_pin_wrong_title'),
+            description: t('toast_pin_wrong_desc', { remaining: 3 - attempts }),
           });
         }
         setPin('');
       } else if (error?.status === 423) {
-        // Bloqueado temporariamente
         toast({
           type: 'warning',
-          title: 'Aguarde um pouco',
-          description: 'Muitas tentativas de PIN. Tente novamente em alguns minutos.',
+          title: t('toast_blocked_title'),
+          description: t('toast_blocked_desc'),
         });
         setSelectedChild(null);
       } else {
         toast({
           type: 'error',
-          title: 'Erro inesperado',
-          description: 'Algo deu errado. Tente novamente.',
+          title: t('toast_unexpected_title'),
+          description: t('toast_unexpected_desc'),
         });
       }
     } finally {
@@ -128,9 +130,7 @@ export default function SelectProfilePage() {
       <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="text-6xl animate-spin">⭐</div>
-          <p className="text-kid-lg font-medium text-gray-700">
-            Carregando perfis...
-          </p>
+          <p className="text-kid-lg font-medium text-gray-700">{t('loading')}</p>
         </div>
       </div>
     );
@@ -142,15 +142,11 @@ export default function SelectProfilePage() {
         <div className="text-center space-y-6">
           <div className="text-8xl">👨‍👩‍👧‍👦</div>
           <div className="space-y-2">
-            <h1 className="text-kid-3xl font-bold text-gray-800">
-              Ainda não há perfis de crianças
-            </h1>
-            <p className="text-kid-base text-gray-600">
-              Peça para um adulto criar seu perfil primeiro!
-            </p>
+            <h1 className="text-kid-3xl font-bold text-gray-800">{t('no_profiles_title')}</h1>
+            <p className="text-kid-base text-gray-600">{t('no_profiles_body')}</p>
           </div>
           <Button variant="sunny" size="kid-lg" asChild>
-            <a href="/dashboard">Voltar</a>
+            <a href="/dashboard">{t('back')}</a>
           </Button>
         </div>
       </div>
@@ -160,16 +156,14 @@ export default function SelectProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 p-4">
       <div className="container mx-auto max-w-4xl py-8">
+        <div className="flex justify-end mb-4">
+          <LanguageSwitcher />
+        </div>
         {!selectedChild ? (
-          // Seleção de perfil
           <div className="text-center space-y-8">
             <div className="space-y-4">
-              <h1 className="text-kid-3xl font-bold text-gray-800">
-                Quem vai brincar hoje?
-              </h1>
-              <p className="text-kid-lg text-gray-600">
-                Toque no seu avatar para começar!
-              </p>
+              <h1 className="text-kid-3xl font-bold text-gray-800">{t('title_who')}</h1>
+              <p className="text-kid-lg text-gray-600">{t('subtitle_tap')}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-3xl mx-auto">
@@ -196,17 +190,17 @@ export default function SelectProfilePage() {
                         {child.name}
                       </h2>
                       <div className="text-kid-base text-gray-600">
-                        Nível {child.level} • {child.xp} XP
+                        {t('level_xp', { level: child.level, xp: child.xp })}
                       </div>
                       {child.streak_days > 0 && (
                         <div className="flex items-center justify-center space-x-1 text-kid-sm text-sunset-600">
                           <span>🔥</span>
-                          <span>{child.streak_days} dias seguidos</span>
+                          <span>{t('streak_days', { days: child.streak_days })}</span>
                         </div>
                       )}
                       {isBlocked && (
                         <div className="text-kid-sm text-red-600 font-medium">
-                          Bloqueado temporariamente
+                          {t('blocked_temp')}
                         </div>
                       )}
                     </div>
@@ -217,12 +211,11 @@ export default function SelectProfilePage() {
 
             <div className="pt-8">
               <Button variant="outline" size="kid-default" asChild>
-                <a href="/dashboard">Voltar para o painel</a>
+                <a href="/dashboard">{t('back_to_panel')}</a>
               </Button>
             </div>
           </div>
         ) : (
-          // Entrada do PIN
           <div className="text-center space-y-8 max-w-md mx-auto">
             <div className="space-y-4">
               <AvatarDisplay
@@ -231,11 +224,9 @@ export default function SelectProfilePage() {
                 className="mx-auto"
               />
               <h1 className="text-kid-2xl font-bold text-gray-800">
-                Oi, {selectedChild.name}!
+                {t('hi_name', { name: selectedChild.name })}
               </h1>
-              <p className="text-kid-base text-gray-600">
-                Digite seu PIN secreto para continuar
-              </p>
+              <p className="text-kid-base text-gray-600">{t('type_pin')}</p>
             </div>
 
             {/* Exibição do PIN */}
@@ -292,9 +283,7 @@ export default function SelectProfilePage() {
             </div>
 
             {isLoading && (
-              <div className="text-kid-base text-gray-600">
-                Verificando PIN...
-              </div>
+              <div className="text-kid-base text-gray-600">{t('verifying')}</div>
             )}
           </div>
         )}
