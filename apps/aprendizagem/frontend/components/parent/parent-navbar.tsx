@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { authApi } from '@/lib/api/auth';
 import { childrenApi } from '@/lib/api/children';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -144,6 +145,7 @@ export function ParentNavbar() {
 
           {/* Menu do usuário */}
           <div className="flex items-center space-x-4">
+            <LanguageSwitcher />
             {/* Informações do usuário */}
             <div className="hidden md:block text-right">
               <p className="text-sm font-medium text-gray-900">

@@ -1,5 +1,10 @@
 import type { NextConfig } from 'next';
 import path from 'path';
+import createNextIntlPlugin from 'next-intl/plugin';
+
+// next-intl plugin: aponta pro arquivo de configuracao que carrega o
+// locale via cookie. Plugin injeta build-time alias pra messages/*.json.
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
   // Define explicitamente o root para o Turbopack ignorar lockfiles fora do projeto.
@@ -44,4 +49,4 @@ const nextConfig: NextConfig = {
   ],
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

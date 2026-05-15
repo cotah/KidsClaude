@@ -1,0 +1,59 @@
+{
+  "common": {
+    "back": "Voltar",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "delete": "Apagar",
+    "loading": "Carregando...",
+    "error_generic": "Algo deu errado. Tente novamente."
+  },
+  "language": {
+    "label": "Idioma",
+    "english": "Inglês",
+    "portuguese": "Português"
+  },
+  "navbar_parent": {
+    "title": "Painel dos Pais",
+    "logout": "Sair"
+  },
+  "navbar_child": {
+    "greeting": "Oi, {name}! Pronto para aprender?",
+    "level": "Nível {level}",
+    "xp_progress": "{current} / {max} XP",
+    "days": "dias",
+    "badges_one": "badge",
+    "badges_other": "badges",
+    "logout": "Sair"
+  },
+  "login": {
+    "title": "Entrar",
+    "subtitle": "Acesse sua conta do Aprendizagem",
+    "email_label": "Email",
+    "email_placeholder": "seu.email@exemplo.com",
+    "email_invalid": "Email inválido",
+    "email_required": "Email é obrigatório",
+    "password_label": "Senha",
+    "password_placeholder": "Sua senha",
+    "password_required": "Senha é obrigatória",
+    "forgot_password": "Esqueci minha senha",
+    "submit": "Entrar",
+    "submitting": "Entrando...",
+    "no_account": "Não tem uma conta?",
+    "signup_link": "Cadastre-se grátis",
+    "toast_success_title": "Login realizado!",
+    "toast_success_desc": "Bem-vindo de volta ao Aprendizagem.",
+    "toast_error_title": "Erro no login",
+    "toast_invalid_credentials": "Email ou senha incorretos.",
+    "toast_rate_limited": "Muitas tentativas. Tente novamente em alguns minutos.",
+    "toast_server_error": "Erro no servidor. Tente novamente em instantes.",
+    "forgot_email_required_title": "Email necessário",
+    "forgot_email_required_desc": "Digite seu email primeiro para redefinir a senha.",
+    "forgot_sent_title": "Email enviado!",
+    "forgot_sent_desc": "Verifique sua caixa de entrada para redefinir a senha.",
+    "forgot_error_title": "Erro ao enviar email",
+    "forgot_error_desc": "Tente novamente em alguns instantes.",
+    "forgot_screen_title": "Email enviado!",
+    "forgot_screen_body": "Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada e pasta de spam.",
+    "forgot_screen_back": "Voltar ao login"
+  }
+}

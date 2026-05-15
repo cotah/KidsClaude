@@ -13,6 +13,7 @@ import { authApi } from '@/lib/api/auth';
 import { config } from '@/lib/config';
 import { calculateLevelInfo, getLevelFloor } from '@/lib/utils';
 import useAppStore from '@/lib/store/app-store';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import type { Child } from '@/types/api';
 
 /**
@@ -147,6 +148,7 @@ export function ChildNavbar() {
 
           {/* Botão de saída */}
           <div className="flex items-center space-x-3">
+            <LanguageSwitcher />
             <div className="text-right text-sm">
               <p className="font-medium text-gray-700">
                 {childData.name}

@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { ReactQueryProvider } from '@/components/providers/react-query-provider';
 import { ToastContainer } from '@/components/ui/toast';
 import './globals.css';
@@ -27,22 +29,29 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Locale + messages vem do i18n/request.ts (cookie 'locale', default 'en').
+  // Layout ficou async pra resolver isso via getLocale/getMessages.
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="pt-BR" className="h-full">
+    <html lang={locale} className="h-full">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       </head>
       <body className="min-h-full bg-background font-sans antialiased">
-        <ReactQueryProvider>
-          {children}
-          <ToastContainer />
-        </ReactQueryProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ReactQueryProvider>
+            {children}
+            <ToastContainer />
+          </ReactQueryProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

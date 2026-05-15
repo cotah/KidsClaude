@@ -1,0 +1,59 @@
+{
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "loading": "Loading...",
+    "error_generic": "Something went wrong. Please try again."
+  },
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "portuguese": "Portuguese"
+  },
+  "navbar_parent": {
+    "title": "Parent Dashboard",
+    "logout": "Sign out"
+  },
+  "navbar_child": {
+    "greeting": "Hi, {name}! Ready to learn?",
+    "level": "Level {level}",
+    "xp_progress": "{current} / {max} XP",
+    "days": "days",
+    "badges_one": "badge",
+    "badges_other": "badges",
+    "logout": "Sign out"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Access your Aprendizagem account",
+    "email_label": "Email",
+    "email_placeholder": "your.email@example.com",
+    "email_invalid": "Invalid email",
+    "email_required": "Email is required",
+    "password_label": "Password",
+    "password_placeholder": "Your password",
+    "password_required": "Password is required",
+    "forgot_password": "Forgot my password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "no_account": "Don't have an account?",
+    "signup_link": "Sign up free",
+    "toast_success_title": "Signed in!",
+    "toast_success_desc": "Welcome back to Aprendizagem.",
+    "toast_error_title": "Sign in error",
+    "toast_invalid_credentials": "Wrong email or password.",
+    "toast_rate_limited": "Too many attempts. Try again in a few minutes.",
+    "toast_server_error": "Server error. Try again shortly.",
+    "forgot_email_required_title": "Email needed",
+    "forgot_email_required_desc": "Type your email first to reset the password.",
+    "forgot_sent_title": "Email sent!",
+    "forgot_sent_desc": "Check your inbox to reset the password.",
+    "forgot_error_title": "Error sending email",
+    "forgot_error_desc": "Please try again in a few moments.",
+    "forgot_screen_title": "Email sent!",
+    "forgot_screen_body": "We sent a link to reset your password. Check your inbox and spam folder.",
+    "forgot_screen_back": "Back to sign in"
+  }
+}

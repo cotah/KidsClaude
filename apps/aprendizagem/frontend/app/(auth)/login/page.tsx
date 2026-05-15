@@ -6,39 +6,45 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useToast } from '@/components/ui/toast';
 import { authApi } from '@/lib/api';
 
-// Schema de validação conforme spec seção 4 (US-02)
-const loginSchema = z.object({
-  email: z
-    .string()
-    .email('Email inválido')
-    .min(1, 'Email é obrigatório'),
-  password: z
-    .string()
-    .min(1, 'Senha é obrigatória'),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
 /**
- * Página de login de responsável - conforme spec seção 8.1
+ * Página de login de responsável.
+ * Strings via next-intl (cookie-based locale, default 'en').
+ *
+ * Schema zod usa `t` capturado no render via useTranslations - precisa
+ * ser construido dentro do componente. Antes era global (Portuguese
+ * hardcoded); agora reconstroi quando o locale muda.
  */
 export default function LoginPage() {
+  const t = useTranslations('login');
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const [showForgotPassword, setShowForgotPassword] = React.useState(false);
 
+  const loginSchema = React.useMemo(
+    () =>
+      z.object({
+        email: z
+          .string()
+          .email(t('email_invalid'))
+          .min(1, t('email_required')),
+        password: z.string().min(1, t('password_required')),
+      }),
+    [t]
+  );
+
+  type LoginFormData = z.infer<typeof loginSchema>;
+
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = async (data: LoginFormData) => {
@@ -53,24 +59,24 @@ export default function LoginPage() {
 
       toast({
         type: 'success',
-        title: 'Login realizado!',
-        description: 'Bem-vindo de volta ao Aprendizagem.',
+        title: t('toast_success_title'),
+        description: t('toast_success_desc'),
       });
 
       router.push('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
 
-      let message = 'Email ou senha incorretos.';
+      let message = t('toast_invalid_credentials');
       if (error?.status === 429) {
-        message = 'Muitas tentativas. Tente novamente em alguns minutos.';
+        message = t('toast_rate_limited');
       } else if (error?.status >= 500) {
-        message = 'Erro no servidor. Tente novamente em instantes.';
+        message = t('toast_server_error');
       }
 
       toast({
         type: 'error',
-        title: 'Erro no login',
+        title: t('toast_error_title'),
         description: message,
       });
     } finally {
@@ -84,8 +90,8 @@ export default function LoginPage() {
     if (!email) {
       toast({
         type: 'warning',
-        title: 'Email necessário',
-        description: 'Digite seu email primeiro para redefinir a senha.',
+        title: t('forgot_email_required_title'),
+        description: t('forgot_email_required_desc'),
       });
       return;
     }
@@ -95,14 +101,14 @@ export default function LoginPage() {
       setShowForgotPassword(true);
       toast({
         type: 'success',
-        title: 'Email enviado!',
-        description: 'Verifique sua caixa de entrada para redefinir a senha.',
+        title: t('forgot_sent_title'),
+        description: t('forgot_sent_desc'),
       });
     } catch (error) {
       toast({
         type: 'error',
-        title: 'Erro ao enviar email',
-        description: 'Tente novamente em alguns instantes.',
+        title: t('forgot_error_title'),
+        description: t('forgot_error_desc'),
       });
     }
   };
@@ -111,27 +117,25 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-ocean-100 to-grape-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex justify-end">
+            <LanguageSwitcher />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">
-            Entrar
+            {t('title')}
           </CardTitle>
-          <p className="text-center text-gray-600">
-            Acesse sua conta do Aprendizagem
-          </p>
+          <p className="text-center text-gray-600">{t('subtitle')}</p>
         </CardHeader>
         <CardContent>
           {showForgotPassword ? (
             <div className="text-center space-y-4">
               <div className="text-6xl">📧</div>
-              <h3 className="text-lg font-semibold">Email enviado!</h3>
-              <p className="text-sm text-gray-600">
-                Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada
-                e pasta de spam.
-              </p>
+              <h3 className="text-lg font-semibold">{t('forgot_screen_title')}</h3>
+              <p className="text-sm text-gray-600">{t('forgot_screen_body')}</p>
               <Button
                 variant="outline"
                 onClick={() => setShowForgotPassword(false)}
               >
-                Voltar ao login
+                {t('forgot_screen_back')}
               </Button>
             </div>
           ) : (
@@ -140,13 +144,13 @@ export default function LoginPage() {
                 {/* Email */}
                 <div className="space-y-2">
                   <label htmlFor="email" className="text-sm font-medium">
-                    Email
+                    {t('email_label')}
                   </label>
                   <input
                     id="email"
                     type="email"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="seu.email@exemplo.com"
+                    placeholder={t('email_placeholder')}
                     {...form.register('email')}
                   />
                   {form.formState.errors.email && (
@@ -159,13 +163,13 @@ export default function LoginPage() {
                 {/* Senha */}
                 <div className="space-y-2">
                   <label htmlFor="password" className="text-sm font-medium">
-                    Senha
+                    {t('password_label')}
                   </label>
                   <input
                     id="password"
                     type="password"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Sua senha"
+                    placeholder={t('password_placeholder')}
                     {...form.register('password')}
                   />
                   {form.formState.errors.password && (
@@ -181,7 +185,7 @@ export default function LoginPage() {
                     onClick={handleForgotPassword}
                     className="text-xs text-ocean-600 hover:underline"
                   >
-                    Esqueci minha senha
+                    {t('forgot_password')}
                   </button>
                 </div>
 
@@ -192,15 +196,18 @@ export default function LoginPage() {
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Entrando...' : 'Entrar'}
+                  {isLoading ? t('submitting') : t('submit')}
                 </Button>
               </form>
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
-                  Não tem uma conta?{' '}
-                  <Link href="/signup" className="text-ocean-600 hover:underline font-medium">
-                    Cadastre-se grátis
+                  {t('no_account')}{' '}
+                  <Link
+                    href="/signup"
+                    className="text-ocean-600 hover:underline font-medium"
+                  >
+                    {t('signup_link')}
                   </Link>
                 </p>
               </div>
