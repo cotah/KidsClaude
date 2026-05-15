@@ -38,6 +38,22 @@ export default function StagePage() {
     enabled: !!currentChild && !isNaN(stageId),
   });
 
+  // Buscar progresso de licoes pra marcar quais ja foram concluidas.
+  // Backend devolve envelope { progress: LessonProgress[] }; o helper
+  // lessonsApi.getProgress ja desempacota.
+  const { data: progress } = useQuery({
+    queryKey: ['lesson-progress', currentChild?.id],
+    queryFn: () => lessonsApi.getProgress(currentChild!.id),
+    enabled: !!currentChild,
+    staleTime: 30_000,
+  });
+
+  // Set de lesson_ids concluidos pra lookup O(1) no LessonListItem.
+  const completedLessonIds = React.useMemo(
+    () => new Set((progress ?? []).filter(p => p.status === 'completed').map(p => p.lesson_id)),
+    [progress]
+  );
+
   if (!currentChild) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center">
@@ -159,6 +175,7 @@ export default function StagePage() {
                   lesson={lesson}
                   index={index + 1}
                   stageId={stageId}
+                  isCompleted={completedLessonIds.has(lesson.id)}
                 />
               ))}
             </div>
@@ -173,42 +190,57 @@ interface LessonListItemProps {
   lesson: Lesson;
   index: number;
   stageId: number;
+  isCompleted: boolean;
 }
 
 /**
- * Item de lição na lista da stage
+ * Item de lição na lista da stage. 3 estados visuais:
+ *  - bloqueada: cinza, opacity, lock icon, botao desabilitado
+ *  - concluida: borda verde, checkmark verde, "Concluida" badge, botao "Rever"
+ *  - disponivel: padrao sunny, circulo vazio, botao "Comecar"
  */
-function LessonListItem({ lesson, index, stageId }: LessonListItemProps) {
+function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemProps) {
   const getStatusIcon = () => {
     if (lesson.is_locked) {
       return <LockIcon className="w-5 h-5 text-gray-400" />;
     }
-    // TODO: Implementar lógica de status baseada no progresso real
-    // Por enquanto, assume que não está completo
+    if (isCompleted) {
+      return <CheckCircleIcon className="w-5 h-5 text-green-600" />;
+    }
     return <div className="w-5 h-5 rounded-full border-2 border-gray-300" />;
   };
 
   const getStatusText = () => {
-    if (lesson.is_locked) {
-      return 'Bloqueado';
-    }
-    // TODO: Implementar lógica de status baseada no progresso real
+    if (lesson.is_locked) return 'Bloqueado';
+    if (isCompleted) return 'Rever';
     return 'Começar';
   };
 
   return (
     <KidCard
-      colorScheme={lesson.is_locked ? 'sunny' : 'sunny'}
+      colorScheme={isCompleted ? 'mint' : 'sunny'}
       className={cn(
-        'transition-all duration-200',
+        'transition-all duration-200 relative',
         !lesson.is_locked && 'hover:scale-105',
-        lesson.is_locked && 'opacity-60'
+        lesson.is_locked && 'opacity-60',
+        isCompleted && 'border-green-400 ring-2 ring-green-200'
       )}
     >
+      {/* Badge "Concluida" canto superior direito quando isCompleted */}
+      {isCompleted && (
+        <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-kid-xs font-medium text-green-700">
+          <CheckCircleIcon className="w-3 h-3" />
+          <span>Concluída</span>
+        </div>
+      )}
+
       <div className="p-6">
         <div className="flex items-center space-x-4">
-          {/* Número da lição */}
-          <div className="w-10 h-10 bg-sunny-400 rounded-full flex items-center justify-center text-white font-bold text-kid-base">
+          {/* Número da lição - verde quando concluida */}
+          <div className={cn(
+            'w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-kid-base',
+            isCompleted ? 'bg-green-500' : 'bg-sunny-400'
+          )}>
             {stageId}.{index}
           </div>
 
@@ -231,7 +263,7 @@ function LessonListItem({ lesson, index, stageId }: LessonListItemProps) {
               {getStatusIcon()}
             </div>
             <Button
-              variant={lesson.is_locked ? 'ghost' : 'sunny'}
+              variant={lesson.is_locked ? 'ghost' : isCompleted ? 'mint' : 'sunny'}
               size="kid-sm"
               asChild
               disabled={lesson.is_locked}

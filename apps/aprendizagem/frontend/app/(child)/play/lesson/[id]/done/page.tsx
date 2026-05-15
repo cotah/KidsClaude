@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Route } from 'next';
 import { Sparkles, Trophy, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import type { LessonCompletionResponse } from '@/types/api';
 export default function LessonDonePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const lessonId = params.id;
 
   const [completion, setCompletion] = useState<LessonCompletionResponse | null>(null);
@@ -30,7 +32,18 @@ export default function LessonDonePage() {
     lessonsApi
       .complete(lessonId)
       .then((res) => {
-        if (!cancelled) setCompletion(res);
+        if (cancelled) return;
+        setCompletion(res);
+        // Invalida caches dependentes pra que stages, listas de licao da
+        // stage e progresso reflitam a conclusao sem precisar refresh:
+        //  - 'stages' (hub /play e header da stage page)
+        //  - 'lessons' (lista da /play/stage/N - filtra por stage)
+        //  - 'lesson-progress' (Set de concluidas no LessonListItem)
+        // Usamos queryKey parcial pra atingir todas as variantes (com/sem
+        // child id, com/sem stage no key array).
+        queryClient.invalidateQueries({ queryKey: ['stages'] });
+        queryClient.invalidateQueries({ queryKey: ['lessons'] });
+        queryClient.invalidateQueries({ queryKey: ['lesson-progress'] });
       })
       .catch((err) => {
         if (!cancelled) setError(getApiErrorMessage(err));
@@ -38,7 +51,7 @@ export default function LessonDonePage() {
     return () => {
       cancelled = true;
     };
-  }, [lessonId]);
+  }, [lessonId, queryClient]);
 
   if (error) {
     return (
