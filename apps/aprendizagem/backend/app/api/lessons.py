@@ -15,7 +15,7 @@ from app.schemas.lessons import (
 )
 from app.schemas.children import LessonCompleteResponse, BadgeInfo
 from app.core.dependencies import AnyAuth, ChildAuth, DBClient
-from app.core import redis_client
+from app.core import cache
 from app.services.gamification import GamificationService
 
 logger = structlog.get_logger()
@@ -47,7 +47,7 @@ async def list_lessons(
     """
     role = "child" if auth.is_child else "parent"
     cache_key = _lessons_cache_key(stage, age_band, role, str(auth.user_id))
-    cached = await redis_client.get_json(cache_key)
+    cached = await cache.get_json(cache_key)
     if cached is not None:
         try:
             return [LessonListItem(**item) for item in cached]
@@ -150,7 +150,7 @@ async def list_lessons(
 
         logger.info("Lições listadas", count=len(lessons), age_band=age_band)
         # Cache best-effort apos computar.
-        await redis_client.set_json(
+        await cache.set_json(
             cache_key,
             [item.model_dump(mode="json") for item in lessons],
             ttl=_LESSONS_CACHE_TTL,
@@ -440,8 +440,8 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient):
         # Invalida caches dependentes do progresso da crianca.
         # Stages: progresso por stage muda. Lessons: is_locked pode mudar
         # quando uma stage e' completada. Falha silenciosa se Redis off.
-        await redis_client.delete(f"stages:child:{auth.user_id}")
-        await redis_client.delete_pattern(f"lessons:*:child:{auth.user_id}")
+        await cache.delete(f"stages:child:{auth.user_id}")
+        await cache.delete_pattern(f"lessons:*:child:{auth.user_id}")
 
         # Formata badges desbloqueados
         badges_unlocked = [

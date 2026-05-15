@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.schemas.lessons import StagesResponse, StageInfo, FinalExamInfo
 from app.core.dependencies import AnyAuth, DBClient
-from app.core import redis_client
+from app.core import cache
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -30,14 +30,14 @@ async def get_stages(auth: AnyAuth, db: DBClient):
     Retorna informações sobre as 4 stages e o exame final.
     Calcula progresso e status de desbloqueio para a criança.
 
-    Cache Redis 5 min via redis_client (no-op se Redis off). Invalidado
+    Cache Redis 5 min via app.core.cache (no-op se Redis off). Invalidado
     em lesson_complete pra refletir progresso imediatamente.
     """
     cache_key = _stages_cache_key(
         "child" if auth.is_child else "parent",
         str(auth.user_id),
     )
-    cached = await redis_client.get_json(cache_key)
+    cached = await cache.get_json(cache_key)
     if cached is not None:
         try:
             return StagesResponse(**cached)
@@ -165,7 +165,7 @@ async def get_stages(auth: AnyAuth, db: DBClient):
 
         response = StagesResponse(stages=stages, final_exam=final_exam)
         # Cache best-effort. set_json e' silencioso se Redis off.
-        await redis_client.set_json(
+        await cache.set_json(
             cache_key, response.model_dump(mode="json"), ttl=_STAGES_CACHE_TTL
         )
         return response

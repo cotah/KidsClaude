@@ -3,38 +3,151 @@ Utilitários de segurança: autenticação, JWT, hashing.
 Implementa autenticação dupla: parent (Supabase) e child (backend).
 """
 
-import jwt
+import json
 import bcrypt
+import httpx
+import jwt
 import structlog
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from fastapi import HTTPException, status
 from jwt import PyJWKClient
+from jwt.algorithms import ECAlgorithm
+from redis import Redis as SyncRedis
+from redis.exceptions import RedisError
 
 from app.core.config import settings
 
 logger = structlog.get_logger()
 
-# Cliente JWKS singleton (cacheia chaves por 1h internamente).
-# PyJWKClient e' mais robusto para ES256 do que python-jose 3.3.0,
-# que tem bugs conhecidos de verificacao ECDSA.
+# Cliente JWKS singleton em memoria (PyJWKClient cacheia 1h internamente).
+# Usado como fallback quando Redis nao tem o JWKS doc.
 _jwks_client: PyJWKClient | None = None
+
+# Cliente Redis SINCRONO (verify_supabase_jwt e' sync, chamado de
+# dependencies do FastAPI). False = ja' tentou e falhou (nao re-tenta
+# pra evitar reconnect-storm). None = ainda nao tentou.
+_jwks_redis: SyncRedis | bool | None = None
+_JWKS_REDIS_KEY = "jwks:supabase"
+_JWKS_TTL_SECONDS = 3600
+
+
+def _get_jwks_url() -> str:
+    return f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
 
 
 def _get_jwks_client() -> PyJWKClient:
     """Retorna (e inicializa lazy) o cliente JWKS do projeto Supabase."""
     global _jwks_client
     if _jwks_client is None:
-        jwks_url = (
-            f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
-        )
         _jwks_client = PyJWKClient(
-            jwks_url,
+            _get_jwks_url(),
             cache_keys=True,
-            lifespan=3600,  # cache de 1h
+            lifespan=_JWKS_TTL_SECONDS,
         )
-        logger.info("JWKS client initialized", url=jwks_url)
+        logger.info("JWKS client initialized", url=_get_jwks_url())
     return _jwks_client
+
+
+def _get_jwks_redis() -> Optional[SyncRedis]:
+    """Cliente Redis sync pra cache do JWKS. None se REDIS_URL off ou ping falhou."""
+    global _jwks_redis
+    if _jwks_redis is False:
+        return None
+    if _jwks_redis is not None:
+        return _jwks_redis
+    if not settings.redis_url:
+        _jwks_redis = False
+        return None
+    try:
+        client = SyncRedis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=3,
+            socket_timeout=3,
+        )
+        client.ping()
+        _jwks_redis = client
+        logger.info("JWKS Redis cache habilitado")
+        return client
+    except (RedisError, OSError) as e:
+        logger.warning("JWKS Redis indisponivel - fallback PyJWKClient", error=str(e))
+        _jwks_redis = False
+        return None
+
+
+def _fetch_and_store_jwks() -> Optional[Dict[str, Any]]:
+    """Baixa JWKS doc do Supabase e armazena no Redis com TTL. Retorna o doc."""
+    try:
+        with httpx.Client(timeout=5.0) as c:
+            resp = c.get(_get_jwks_url())
+            resp.raise_for_status()
+            doc = resp.json()
+    except (httpx.HTTPError, ValueError) as e:
+        logger.warning("Falha ao baixar JWKS pra Redis - fallback PyJWKClient", error=str(e))
+        return None
+
+    rc = _get_jwks_redis()
+    if rc:
+        try:
+            rc.set(_JWKS_REDIS_KEY, json.dumps(doc), ex=_JWKS_TTL_SECONDS)
+        except RedisError as e:
+            logger.warning("Falha ao salvar JWKS no Redis", error=str(e))
+    return doc
+
+
+def _signing_key_from_redis(token: str) -> Optional[Any]:
+    """
+    Tenta resolver a signing key via Redis. None se cache miss, kid nao
+    bate, ou Redis off. Caller faz fallback pro PyJWKClient.
+    """
+    rc = _get_jwks_redis()
+    if not rc:
+        return None
+
+    # 1) Tenta cache
+    try:
+        cached = rc.get(_JWKS_REDIS_KEY)
+    except RedisError as e:
+        logger.warning("JWKS Redis get falhou - fallback", error=str(e))
+        return None
+
+    if cached:
+        try:
+            doc = json.loads(cached)
+        except json.JSONDecodeError:
+            doc = None
+    else:
+        # Cache miss: baixa e armazena (best-effort).
+        doc = _fetch_and_store_jwks()
+
+    if not doc or "keys" not in doc:
+        return None
+
+    # 2) Pega kid do header do token e procura a jwk correspondente.
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError:
+        return None
+    kid = header.get("kid")
+    if not kid:
+        return None
+
+    jwk = next((k for k in doc["keys"] if k.get("kid") == kid), None)
+    if not jwk:
+        # kid nao bate - JWKS pode ter rotacionado, invalida cache pra forcar refresh
+        try:
+            rc.delete(_JWKS_REDIS_KEY)
+        except RedisError:
+            pass
+        return None
+
+    # 3) Constroi a signing key (ES256 = EC algorithm)
+    try:
+        return ECAlgorithm.from_jwk(json.dumps(jwk))
+    except Exception as e:
+        logger.warning("Falha ao construir signing key do JWK em cache", error=str(e))
+        return None
 
 # Bcrypt direto (sem passlib). passlib 1.7.4 explode com bcrypt 4.x:
 # "module 'bcrypt' has no attribute '__about__'" porque a 4.x removeu
@@ -70,18 +183,26 @@ def verify_pin(pin: str, hashed: str) -> bool:
 def verify_supabase_jwt(token: str) -> Dict[str, Any]:
     """
     Verifica JWT emitido pelo Supabase Auth.
-    Tokens Supabase usam ES256 (ECDSA P-256). Usamos PyJWKClient que faz
-    o fetch da JWKS, escolhe a chave certa pelo kid do header e cacheia
-    automaticamente. Logs estruturados em cada falha pra facilitar debug
-    via Railway logs.
+    Tokens Supabase usam ES256 (ECDSA P-256). Estrategia em 2 camadas:
+      1) Redis cache do JWKS doc (TTL 1h) - resolve kid via Redis sync.
+         Compartilhado entre workers, sobrevive restart.
+      2) Fallback PyJWKClient (cache em memoria por processo) se Redis
+         off ou kid nao bate (rotacao de chave).
+    Logs estruturados em cada falha pra facilitar debug via Railway logs.
     """
     try:
-        jwks_client = _get_jwks_client()
-        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        # Tentativa 1: Redis cache
+        signing_key = _signing_key_from_redis(token)
+        if signing_key is not None:
+            key_material = signing_key
+        else:
+            # Tentativa 2: PyJWKClient (mantem cache em memoria interno)
+            jwks_client = _get_jwks_client()
+            key_material = jwks_client.get_signing_key_from_jwt(token).key
 
         payload = jwt.decode(
             token,
-            signing_key.key,
+            key_material,
             algorithms=["ES256"],
             options={
                 "verify_aud": False,  # Supabase nao usa aud padrao
