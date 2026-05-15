@@ -24,6 +24,7 @@ export function StageCard({ stage, className }: StageCardProps) {
   // Backend devolve hardcoded em PT (stages.py); JSON tem ambas as linguas.
   const tInfo = useTranslations('stage_info');
   const tCard = useTranslations('stage_page');
+  const tLesson = useTranslations('lesson');
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -52,20 +53,20 @@ export function StageCard({ stage, className }: StageCardProps) {
   const getStatusInfo = () => {
     if (!stage.is_unlocked) {
       return {
-        action: 'Bloqueado',
+        action: tLesson('button_locked'),
         icon: <LockIcon className="w-4 h-4" />,
         disabled: true,
       };
     }
     if (stage.is_completed) {
       return {
-        action: 'Revisar',
+        action: tLesson('button_review'),
         icon: <CheckCircleIcon className="w-4 h-4" />,
         disabled: false,
       };
     }
     return {
-      action: 'Continuar',
+      action: tLesson('button_continue'),
       icon: null,
       disabled: false,
     };

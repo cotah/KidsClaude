@@ -18,7 +18,9 @@ class LessonListItem(BaseModel):
     id: str
     slug: str
     title: str
+    title_en: Optional[str] = None
     description: str
+    description_en: Optional[str] = None
     xp_reward: int
     order_index: int
     stage: int
@@ -55,6 +57,7 @@ class LessonDetail(BaseModel):
     # antigos que nao foram traduzidos. Frontend escolhe baseado no locale.
     title_en: Optional[str] = None
     description: str
+    description_en: Optional[str] = None
     age_band: str
     order_index: int
     stage: int

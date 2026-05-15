@@ -85,7 +85,8 @@ async def list_lessons(
             params.append(stage)
 
         lessons_data = await db.execute_query(f"""
-            SELECT id, slug, title, description, xp_reward, order_index, stage,
+            SELECT id, slug, title, title_en, description, description_en,
+                   xp_reward, order_index, stage,
                    is_final_exam, claude_model, prerequisites
             FROM lessons
             {where_clause}
@@ -137,7 +138,9 @@ async def list_lessons(
                 id=lesson['id'],
                 slug=lesson['slug'],
                 title=lesson['title'],
+                title_en=lesson.get('title_en'),
                 description=lesson['description'],
+                description_en=lesson.get('description_en'),
                 xp_reward=lesson['xp_reward'],
                 order_index=lesson['order_index'],
                 stage=lesson['stage'],
@@ -169,12 +172,13 @@ async def get_lesson_detail(lesson_id: str, auth: AnyAuth, db: DBClient):
     Inclui blocos de conteúdo, desafios e prompt templates.
     """
     try:
-        # Busca lição. title_en/content_blocks_en vem da migration 010
-        # (NULL pra dados antigos; OK porque o schema marca como Optional).
+        # Busca lição. title_en/description_en/content_blocks_en vem das
+        # migrations 010+012 (NULL pra dados antigos; OK porque o schema
+        # marca como Optional).
         lesson_data = await db.execute_query("""
-            SELECT id, slug, title, title_en, description, age_band, order_index,
-                   content_blocks, content_blocks_en, prerequisites, xp_reward,
-                   stage, is_final_exam, claude_model
+            SELECT id, slug, title, title_en, description, description_en,
+                   age_band, order_index, content_blocks, content_blocks_en,
+                   prerequisites, xp_reward, stage, is_final_exam, claude_model
             FROM lessons
             WHERE id = $1 AND is_active = true
         """, lesson_id)
@@ -243,6 +247,7 @@ async def get_lesson_detail(lesson_id: str, auth: AnyAuth, db: DBClient):
             title=lesson['title'],
             title_en=lesson.get('title_en'),
             description=lesson['description'],
+            description_en=lesson.get('description_en'),
             age_band=lesson['age_band'],
             order_index=lesson['order_index'],
             stage=lesson['stage'],

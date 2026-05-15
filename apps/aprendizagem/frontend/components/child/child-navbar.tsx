@@ -130,10 +130,11 @@ export function ChildNavbar() {
                 <div className="text-center">
                   <p className="font-bold text-orange-700">{childData.streak_days}</p>
                   <p className="text-xs text-orange-600">
-                    {/* days_count cuida do plural via ICU; passamos 0 pra
-                        suprimir o numero (ja' aparece em <p> em cima) e
-                        usamos so' a palavra. Solucao mais simples: split */}
-                    {childData.streak_days === 1 ? t('days').replace(/s$/, '') : t('days')}
+                    {/* days_word: ICU plural que devolve so' a palavra
+                        ("day"/"days" em EN, "dia"/"dias" em PT) baseado
+                        em n. Numero ja' aparece no <p> acima. Sintaxe:
+                        {n, plural, one {day} other {days}}. */}
+                    {t('days_word', { n: childData.streak_days })}
                   </p>
                 </div>
               </div>

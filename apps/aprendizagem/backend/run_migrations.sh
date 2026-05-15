@@ -167,4 +167,20 @@ else
     echo "[migrate] 011 already applied (badges.name_en column present), skipping"
 fi
 
+# Gate 012: lessons.description_en (subtitulo curto da lista de licoes
+# da stage). Migration 010 ja' tinha title_en + content_blocks_en;
+# 012 fecha a lacuna do subtitulo. Sentinel: existencia da coluna.
+DESC_EN_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='lessons' AND column_name='description_en');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$DESC_EN_EXISTS" ] || [ "$DESC_EN_EXISTS" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 012..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 012_lesson_descriptions_en.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/012_lesson_descriptions_en.sql
+    echo "[migrate] 012 done"
+else
+    echo "[migrate] 012 already applied (lessons.description_en present), skipping"
+fi
+
 echo "[migrate] done. starting server..."

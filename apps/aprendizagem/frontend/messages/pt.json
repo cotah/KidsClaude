@@ -30,9 +30,16 @@
     "xp_progress": "{current} / {max} XP",
     "days": "dias",
     "days_count": "{n, plural, one {# dia} other {# dias}}",
+    "days_word": "{n, plural, one {dia} other {dias}}",
     "badges_one": "badge",
     "badges_other": "badges",
     "logout": "Sair"
+  },
+  "lesson": {
+    "button_locked": "Bloqueado",
+    "button_continue": "Continuar",
+    "button_start": "Começar",
+    "button_review": "Rever"
   },
   "stage_info": {
     "1": {

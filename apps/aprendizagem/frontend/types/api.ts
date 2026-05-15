@@ -142,9 +142,10 @@ export interface Lesson {
   id: string;
   slug: string;
   title: string;
-  // Versao em ingles (migration 010). Frontend usa quando locale=='en'.
+  // Versao em ingles (migration 010 / 012). Frontend usa quando locale=='en'.
   title_en?: string | null;
   description: string;
+  description_en?: string | null;
   age_band: '6-8' | '9-10' | '11-12' | '12+';
   stage: number;
   is_final_exam: boolean;

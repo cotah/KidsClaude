@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircleIcon, LockIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KidCard } from '@/components/ui/card';
@@ -208,6 +208,16 @@ interface LessonListItemProps {
  */
 function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemProps) {
   const t = useTranslations('stage_page');
+  const tLesson = useTranslations('lesson');
+  const locale = useLocale();
+
+  // Locale-aware: usa title_en/description_en quando locale='en' e o
+  // backend tem traducao (migrations 010+012). Fallback PT pra licoes
+  // antigas que nao foram traduzidas.
+  const useEnglish = locale === 'en';
+  const displayTitle = useEnglish && lesson.title_en ? lesson.title_en : lesson.title;
+  const displayDescription =
+    useEnglish && lesson.description_en ? lesson.description_en : lesson.description;
 
   const getStatusIcon = () => {
     if (lesson.is_locked) {
@@ -220,9 +230,9 @@ function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemP
   };
 
   const getStatusText = () => {
-    if (lesson.is_locked) return t('status_locked');
-    if (isCompleted) return t('status_review');
-    return t('status_start');
+    if (lesson.is_locked) return tLesson('button_locked');
+    if (isCompleted) return tLesson('button_review');
+    return tLesson('button_start');
   };
 
   return (
@@ -249,13 +259,13 @@ function LessonListItem({ lesson, index, stageId, isCompleted }: LessonListItemP
             {stageId}.{index}
           </div>
 
-          {/* Conteúdo da lição */}
+          {/* Conteúdo da lição (title/description localizados) */}
           <div className="flex-1 space-y-1">
             <h3 className="text-kid-lg font-bold text-gray-800">
-              {lesson.title}
+              {displayTitle}
             </h3>
             <p className="text-kid-base text-gray-600">
-              {lesson.description}
+              {displayDescription}
             </p>
           </div>
 
