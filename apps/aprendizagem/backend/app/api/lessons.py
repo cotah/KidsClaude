@@ -15,10 +15,19 @@ from app.schemas.lessons import (
 )
 from app.schemas.children import LessonCompleteResponse, BadgeInfo
 from app.core.dependencies import AnyAuth, ChildAuth, DBClient
+from app.core import redis_client
 from app.services.gamification import GamificationService
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+# TTL longo: lessons nao mudam fora de migrations. is_locked depende de
+# progresso da crianca, por isso a key inclui user_id.
+_LESSONS_CACHE_TTL = 3600
+
+
+def _lessons_cache_key(stage: Optional[int], age_band: Optional[str], role: str, user_id: str) -> str:
+    return f"lessons:stage:{stage or 'all'}:band:{age_band or 'auto'}:{role}:{user_id}"
 
 
 @router.get("", response_model=List[LessonListItem])
@@ -31,7 +40,20 @@ async def list_lessons(
     """
     Lista lições disponíveis.
     Filtra por faixa etária se especificada.
+
+    Cache Redis 1h (lessons sao quase estaticos). is_locked depende do
+    progresso da crianca, entao a key inclui user_id. Invalidado em
+    lesson_complete pra refletir desbloqueios sem espera.
     """
+    role = "child" if auth.is_child else "parent"
+    cache_key = _lessons_cache_key(stage, age_band, role, str(auth.user_id))
+    cached = await redis_client.get_json(cache_key)
+    if cached is not None:
+        try:
+            return [LessonListItem(**item) for item in cached]
+        except Exception as e:
+            logger.warning("Cache de lessons com shape invalido - recomputando", error=str(e))
+
     try:
         # Determina faixa etária se não especificada e usuário é criança
         if not age_band and not stage and auth.is_child:
@@ -127,6 +149,12 @@ async def list_lessons(
             lessons.append(lesson_item)
 
         logger.info("Lições listadas", count=len(lessons), age_band=age_band)
+        # Cache best-effort apos computar.
+        await redis_client.set_json(
+            cache_key,
+            [item.model_dump(mode="json") for item in lessons],
+            ttl=_LESSONS_CACHE_TTL,
+        )
         return lessons
 
     except Exception as e:
@@ -408,6 +436,12 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient):
         await gamification.update_streak(auth.user_id)
 
         logger.info("Lição concluída", child_id=auth.user_id, lesson_id=lesson_id, xp=xp_reward, stage_unlocked=stage_unlocked)
+
+        # Invalida caches dependentes do progresso da crianca.
+        # Stages: progresso por stage muda. Lessons: is_locked pode mudar
+        # quando uma stage e' completada. Falha silenciosa se Redis off.
+        await redis_client.delete(f"stages:child:{auth.user_id}")
+        await redis_client.delete_pattern(f"lessons:*:child:{auth.user_id}")
 
         # Formata badges desbloqueados
         badges_unlocked = [

@@ -16,6 +16,7 @@ from app.schemas.auth import (
     ChildLoginResponse, ApiResponse
 )
 from app.schemas.common import ErrorResponse
+from app.core.config import settings
 from app.core.dependencies import ParentAuth, DBClient
 from app.core.security import hash_pin, verify_pin, create_child_jwt
 from app.db.client import supabase
@@ -23,8 +24,14 @@ from app.db.client import supabase
 logger = structlog.get_logger()
 router = APIRouter()
 
-# Rate limiter específico para auth
-limiter = Limiter(key_func=get_remote_address)
+# Rate limiter específico para auth.
+# storage_uri=redis_url quando Redis disponivel: limites compartilhados
+# entre workers e persistem reinicios. Fallback "memory://" em dev/local
+# (por-worker, perde-se em restart). SlowAPI faz parse do scheme sozinho.
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=settings.redis_url or "memory://",
+)
 
 
 @router.post("/parent/signup", response_model=ParentSignupResponse, status_code=201)

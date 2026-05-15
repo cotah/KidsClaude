@@ -9,9 +9,19 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.schemas.lessons import StagesResponse, StageInfo, FinalExamInfo
 from app.core.dependencies import AnyAuth, DBClient
+from app.core import redis_client
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+# TTL do cache de stages: 5 min. Curto pra refletir progresso rapidamente
+# se algo nao invalidar via /complete (defesa em profundidade).
+_STAGES_CACHE_TTL = 300
+
+
+def _stages_cache_key(role: str, user_id: str) -> str:
+    """Chave canonica do cache. role=child|parent isola sessoes."""
+    return f"stages:{role}:{user_id}"
 
 
 @router.get("", response_model=StagesResponse)
@@ -19,7 +29,22 @@ async def get_stages(auth: AnyAuth, db: DBClient):
     """
     Retorna informações sobre as 4 stages e o exame final.
     Calcula progresso e status de desbloqueio para a criança.
+
+    Cache Redis 5 min via redis_client (no-op se Redis off). Invalidado
+    em lesson_complete pra refletir progresso imediatamente.
     """
+    cache_key = _stages_cache_key(
+        "child" if auth.is_child else "parent",
+        str(auth.user_id),
+    )
+    cached = await redis_client.get_json(cache_key)
+    if cached is not None:
+        try:
+            return StagesResponse(**cached)
+        except Exception as e:
+            # Schema mudou e cache ficou stale: ignora e recomputa.
+            logger.warning("Cache de stages com shape invalido - recomputando", error=str(e))
+
     try:
         # Define informações estáticas das stages
         stage_info = {
@@ -138,7 +163,12 @@ async def get_stages(auth: AnyAuth, db: DBClient):
                 claude_model="claude-sonnet-4-6"
             )
 
-        return StagesResponse(stages=stages, final_exam=final_exam)
+        response = StagesResponse(stages=stages, final_exam=final_exam)
+        # Cache best-effort. set_json e' silencioso se Redis off.
+        await redis_client.set_json(
+            cache_key, response.model_dump(mode="json"), ttl=_STAGES_CACHE_TTL
+        )
+        return response
 
     except HTTPException:
         raise

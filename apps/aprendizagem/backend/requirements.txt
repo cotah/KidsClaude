@@ -15,6 +15,7 @@ httpx==0.27.2
 pytz==2024.2
 email-validator==2.1.0
 pyjwt[crypto]==2.10.1
+redis==5.2.1
 
 # Dependências de desenvolvimento (opcional)
 pytest==8.3.4

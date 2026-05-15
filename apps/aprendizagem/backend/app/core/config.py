@@ -3,7 +3,7 @@ Configurações da aplicação usando Pydantic Settings.
 Carrega variáveis de ambiente e valida tipos.
 """
 
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -53,6 +53,11 @@ class Settings(BaseSettings):
 
     # Sentry (opcional)
     sentry_dsn: str | None = Field(default=None, description="DSN do Sentry para tracking de erros")
+
+    # Redis (opcional). Set automaticamente pela Railway quando o servico
+    # Redis Pro e' adicionado. Sem ele, cache e rate limit caem em memoria
+    # graceful (modo dev/local). Formato: redis://default:pass@host:port
+    redis_url: Optional[str] = Field(default=None, description="URL do Redis (Railway)")
 
     # Health check
     @property
