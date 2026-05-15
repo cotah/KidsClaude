@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { LogOut, Star, Award, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -22,7 +22,6 @@ import type { Child } from '@/types/api';
  */
 export function ChildNavbar() {
   const t = useTranslations('navbar_child');
-  const locale = useLocale();
   const router = useRouter();
   const { currentChild, setCurrentChild } = useAppStore();
 
@@ -127,21 +126,14 @@ export function ChildNavbar() {
               </div>
             </div>
 
-            {/* Sequência */}
+            {/* Sequência: so' o numero + flame, sem palavra "dia"/"day"
+                (decisao de design - o icone ja' indica streak). */}
             {childData.streak_days > 0 && (
               <div className="flex items-center space-x-2 bg-orange-100 px-3 py-2 rounded-lg">
                 <Flame className="w-5 h-5 text-orange-500" />
-                <div className="text-center">
-                  <p className="font-bold text-orange-700">{childData.streak_days}</p>
-                  <p className="text-xs text-orange-600">
-                    {/* JavaScript puro - ICU plural via t() falhava em
-                        producao apesar do JSON estar correto. Conditional
-                        direto e' simples e auditavel. */}
-                    {locale === 'en'
-                      ? childData.streak_days === 1 ? 'day' : 'days'
-                      : childData.streak_days === 1 ? 'dia' : 'dias'}
-                  </p>
-                </div>
+                <p className="font-bold text-orange-700 text-lg">
+                  {childData.streak_days}
+                </p>
               </div>
             )}
 
