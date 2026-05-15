@@ -14,6 +14,7 @@ from app.core.security import (
     extract_bearer_token,
     verify_supabase_jwt,
     verify_child_jwt,
+    token_has_kid,
     AuthError
 )
 from app.db.client import get_db_client
@@ -72,6 +73,14 @@ async def get_current_user_parent(
     """
     try:
         token = extract_bearer_token(authorization)
+
+        # Fast-fail sem barulho de JWKS: tokens sem 'kid' sao child JWTs
+        # (HS256), que nao podem acessar rotas de pai. Levanta 401 antes
+        # de tentar verify Supabase (que iria logar "Unable to find
+        # signing key that matches: None" antes de falhar do mesmo jeito).
+        if not token_has_kid(token):
+            raise AuthError("Token de pai obrigatorio")
+
         payload = verify_supabase_jwt(token)
 
         user_id = payload["sub"]
@@ -133,8 +142,13 @@ async def get_current_user_any(
     try:
         token = extract_bearer_token(authorization)
 
-        # Tenta primeiro como parent, depois como child
-        try:
+        # Roteia pelo header do token em vez de try/except em cascata.
+        # Supabase ES256 traz 'kid' (chave JWKS); child HS256 nao tem kid.
+        # Sem esse check, child token entrava no JWKS e logava
+        # "Unable to find signing key that matches: None" no Railway
+        # antes de cair no fallback HS256 - barulho desnecessario + custo
+        # de roundtrip pro Redis/PyJWKClient.
+        if token_has_kid(token):
             payload = verify_supabase_jwt(token)
             user_id = payload["sub"]
             email = payload.get("email") or ""
@@ -147,8 +161,7 @@ async def get_current_user_any(
                 user_id, email,
             )
             return AuthContext(user_id=user_id, role="parent", raw_payload=payload)
-        except AuthError:
-            # Se falhar como parent, tenta como child
+        else:
             payload = verify_child_jwt(token)
             return AuthContext(user_id=payload["sub"], role="child", raw_payload=payload)
 

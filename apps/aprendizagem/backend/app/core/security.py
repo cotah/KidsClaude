@@ -180,6 +180,25 @@ def verify_pin(pin: str, hashed: str) -> bool:
         return False
 
 
+def token_has_kid(token: str) -> bool:
+    """
+    True se o token tem 'kid' no header (Supabase ES256, JWKS-verified).
+    False se nao tem (child JWT HS256 do backend, secret-verified).
+
+    Usado pra rotear o token pra verifier certo SEM tentar JWKS pra
+    child token, evitando "Unable to find signing key that matches: None"
+    nos logs do Railway. Nao verifica assinatura - so' inspeciona o
+    header decodificado em base64 (jwt.get_unverified_header).
+    """
+    try:
+        header = jwt.get_unverified_header(token)
+        return "kid" in header
+    except jwt.InvalidTokenError:
+        # Token mal-formado: nao tem kid (e nao da pra fazer verify),
+        # mas dependencies cuida do erro real depois.
+        return False
+
+
 def verify_supabase_jwt(token: str) -> Dict[str, Any]:
     """
     Verifica JWT emitido pelo Supabase Auth.
