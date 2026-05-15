@@ -21,6 +21,9 @@ import type { Lesson } from '@/types/api';
  */
 export default function StagePage() {
   const t = useTranslations('stage_page');
+  // tInfo expoe nome/descricao/age_band traduzidos por numero de stage,
+  // sobrescrevendo o que o backend devolve hardcoded em PT.
+  const tInfo = useTranslations('stage_info');
   const params = useParams();
   const router = useRouter();
   const { currentChild } = useAppStore();
@@ -114,12 +117,15 @@ export default function StagePage() {
                 </div>
                 <div>
                   <h1 className="text-kid-2xl font-bold text-gray-800">
-                    {t('stage_label', { n: currentStage.stage, name: currentStage.name })}
+                    {t('stage_label', {
+                      n: currentStage.stage,
+                      name: tInfo(`${currentStage.stage}.name`),
+                    })}
                   </h1>
                   <p className="text-kid-base text-gray-600">
                     {t('stage_subtitle', {
-                      description: currentStage.description,
-                      age_band: currentStage.age_band_label,
+                      description: tInfo(`${currentStage.stage}.description`),
+                      age_band: tInfo(`${currentStage.stage}.age_band_label`),
                     })}
                   </p>
                 </div>

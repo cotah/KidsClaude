@@ -153,4 +153,18 @@ else
     echo "[migrate] 010 already applied (title_en column present), skipping"
 fi
 
+# Gate 011: traducao EN dos badges. Sentinel: existencia de badges.name_en.
+BADGE_NAME_EN_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='badges' AND column_name='name_en');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$BADGE_NAME_EN_EXISTS" ] || [ "$BADGE_NAME_EN_EXISTS" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 011..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 011_badges_english.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/011_badges_english.sql
+    echo "[migrate] 011 done"
+else
+    echo "[migrate] 011 already applied (badges.name_en column present), skipping"
+fi
+
 echo "[migrate] done. starting server..."

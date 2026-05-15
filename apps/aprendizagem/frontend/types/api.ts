@@ -142,6 +142,8 @@ export interface Lesson {
   id: string;
   slug: string;
   title: string;
+  // Versao em ingles (migration 010). Frontend usa quando locale=='en'.
+  title_en?: string | null;
   description: string;
   age_band: '6-8' | '9-10' | '11-12' | '12+';
   stage: number;
@@ -149,6 +151,7 @@ export interface Lesson {
   claude_model: string;
   order_index: number;
   content_blocks: ContentBlock[];
+  content_blocks_en?: ContentBlock[] | null;
   prerequisites: string[];
   xp_reward: number;
   is_locked: boolean;

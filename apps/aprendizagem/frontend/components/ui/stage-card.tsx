@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { LockIcon, CheckCircleIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from './button';
 import { KidCard } from './card';
 import { Badge } from './badge';
@@ -19,6 +20,11 @@ interface StageCardProps {
  * Mostra progresso, status de desbloqueio e dificuldade
  */
 export function StageCard({ stage, className }: StageCardProps) {
+  // Sobrescreve nome/descricao/age_band do backend com a versao traduzida.
+  // Backend devolve hardcoded em PT (stages.py); JSON tem ambas as linguas.
+  const tInfo = useTranslations('stage_info');
+  const tCard = useTranslations('stage_page');
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'easy':
@@ -86,8 +92,12 @@ export function StageCard({ stage, className }: StageCardProps) {
               <span className="text-2xl font-bold">{stage.stage}</span>
             </div>
             <div>
-              <h3 className="text-kid-lg font-bold text-gray-800">{stage.name}</h3>
-              <span className="text-kid-sm text-gray-600">{stage.age_band_label}</span>
+              <h3 className="text-kid-lg font-bold text-gray-800">
+                {tInfo(`${stage.stage}.name`)}
+              </h3>
+              <span className="text-kid-sm text-gray-600">
+                {tInfo(`${stage.stage}.age_band_label`)}
+              </span>
             </div>
           </div>
           <div className="flex flex-col items-end space-y-2">
@@ -105,15 +115,15 @@ export function StageCard({ stage, className }: StageCardProps) {
 
         {/* Descrição */}
         <p className="text-kid-base text-gray-600 line-clamp-2">
-          {stage.description}
+          {tInfo(`${stage.stage}.description`)}
         </p>
 
         {/* Barra de progresso */}
         <div className="space-y-2">
           <div className="flex justify-between items-center text-kid-sm">
-            <span className="text-gray-600">Progresso</span>
+            <span className="text-gray-600">{tCard('stage_progress')}</span>
             <span className="font-medium text-gray-800">
-              {stage.lessons_completed} / {stage.lessons_total} lições
+              {tCard('lessons_count', { completed: stage.lessons_completed, total: stage.lessons_total })}
             </span>
           </div>
           <Progress

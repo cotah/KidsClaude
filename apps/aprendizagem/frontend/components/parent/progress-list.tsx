@@ -1,3 +1,6 @@
+'use client';
+
+import { useLocale, useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -8,11 +11,11 @@ interface ProgressListProps {
   progress: LessonProgress[];
 }
 
-/**
- * Lista do progresso de lições da criança.
- * Mostra status e XP ganho por lição.
- */
 export function ProgressList({ progress }: ProgressListProps) {
+  const t = useTranslations('progress_list');
+  const locale = useLocale();
+  const dateLocale = locale === 'en' ? 'en-US' : 'pt-BR';
+
   const getStatusIcon = (status: LessonProgress['status']) => {
     switch (status) {
       case 'completed':
@@ -27,11 +30,11 @@ export function ProgressList({ progress }: ProgressListProps) {
   const getStatusLabel = (status: LessonProgress['status']) => {
     switch (status) {
       case 'completed':
-        return 'Concluída';
+        return t('status_completed');
       case 'in_progress':
-        return 'Em andamento';
+        return t('status_in_progress');
       default:
-        return 'Não iniciada';
+        return t('status_not_started');
     }
   };
 
@@ -53,26 +56,24 @@ export function ProgressList({ progress }: ProgressListProps) {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Progresso de lições</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
         <Badge variant="outline">
           {completedCount} / {totalCount}
         </Badge>
       </div>
 
-      {/* Progresso geral */}
       <div className="mb-6">
         <div className="flex justify-between text-sm text-gray-600 mb-2">
-          <span>Progresso geral</span>
+          <span>{t('overall')}</span>
           <span>{Math.round(completionPercentage)}%</span>
         </div>
         <Progress value={completionPercentage} className="h-2" />
       </div>
 
-      {/* Lista de lições */}
       <div className="space-y-3 max-h-64 overflow-y-auto">
         {progress.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
-            <p>Nenhuma lição iniciada ainda</p>
+            <p>{t('empty')}</p>
           </div>
         ) : (
           progress.map((item) => (
@@ -84,11 +85,11 @@ export function ProgressList({ progress }: ProgressListProps) {
                 {getStatusIcon(item.status)}
                 <div>
                   <p className="font-medium text-gray-900">
-                    {item.lesson_title || `Lição ${item.lesson_id.slice(0, 8)}`}
+                    {item.lesson_title || t('lesson_fallback', { short: item.lesson_id.slice(0, 8) })}
                   </p>
                   {item.completed_at && (
                     <p className="text-xs text-gray-500">
-                      Concluída em {new Date(item.completed_at).toLocaleDateString('pt-BR')}
+                      {t('completed_at', { date: new Date(item.completed_at).toLocaleDateString(dateLocale) })}
                     </p>
                   )}
                 </div>
@@ -100,9 +101,7 @@ export function ProgressList({ progress }: ProgressListProps) {
                     +{item.xp_earned} XP
                   </Badge>
                 )}
-                <Badge
-                  className={`text-xs ${getStatusColor(item.status)}`}
-                >
+                <Badge className={`text-xs ${getStatusColor(item.status)}`}>
                   {getStatusLabel(item.status)}
                 </Badge>
               </div>

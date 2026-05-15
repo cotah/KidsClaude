@@ -51,6 +51,9 @@ class LessonDetail(BaseModel):
     id: str
     slug: str
     title: str
+    # Versao em ingles do titulo + conteudo (migration 010). None pra dados
+    # antigos que nao foram traduzidos. Frontend escolhe baseado no locale.
+    title_en: Optional[str] = None
     description: str
     age_band: str
     order_index: int
@@ -58,6 +61,7 @@ class LessonDetail(BaseModel):
     is_final_exam: bool
     claude_model: str
     content_blocks: List[ContentBlock]
+    content_blocks_en: Optional[List[ContentBlock]] = None
     prerequisites: List[str]
     xp_reward: int
     challenges: List[Challenge]

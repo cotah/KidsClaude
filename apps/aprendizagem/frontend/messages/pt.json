@@ -29,9 +29,91 @@
     "level_label": "Nível {level}",
     "xp_progress": "{current} / {max} XP",
     "days": "dias",
+    "days_count": "{n, plural, one {# dia} other {# dias}}",
     "badges_one": "badge",
     "badges_other": "badges",
     "logout": "Sair"
+  },
+  "stage_info": {
+    "1": {
+      "name": "Discovery",
+      "description": "Vamos descobrir o que é IA",
+      "age_band_label": "6-8 anos"
+    },
+    "2": {
+      "name": "Exploration",
+      "description": "Entender como prompts funcionam",
+      "age_band_label": "9-10 anos"
+    },
+    "3": {
+      "name": "Creation",
+      "description": "Criar coisas com a Claude",
+      "age_band_label": "11-12 anos"
+    },
+    "4": {
+      "name": "Prompt Engineering",
+      "description": "Técnicas avançadas de prompting",
+      "age_band_label": "12+ anos"
+    }
+  },
+  "child_overview": {
+    "title": "Informações gerais",
+    "age_label": "Idade",
+    "age_unit": "{age} anos",
+    "avatar_label": "Avatar",
+    "level_label": "Nível",
+    "level_n": "Nível {level}",
+    "streak_label": "Sequência",
+    "streak_active": "{days, plural, one {# dia} other {# dias}}",
+    "streak_none": "Nenhuma sequência ativa",
+    "daily_limit_label": "Limite diário",
+    "daily_limit_unit": "{minutes} minutos",
+    "last_active_label": "Última atividade",
+    "never": "Nunca"
+  },
+  "progress_list": {
+    "title": "Progresso de lições",
+    "overall": "Progresso geral",
+    "empty": "Nenhuma lição iniciada ainda",
+    "completed_at": "Concluída em {date}",
+    "lesson_fallback": "Lição {short}",
+    "status_completed": "Concluída",
+    "status_in_progress": "Em andamento",
+    "status_not_started": "Não iniciada"
+  },
+  "usage_chart": {
+    "title": "Uso diário",
+    "average_short": "Média: {minutes}min/dia",
+    "days_ago": "30 dias atrás",
+    "today": "Hoje",
+    "total_30d": "Total (30d)",
+    "average_label": "Média diária",
+    "max_label": "Máximo",
+    "tooltip": "{date}: {minutes}min",
+    "empty_hint": "Nenhum uso registrado ainda"
+  },
+  "badge_wall": {
+    "title": "Badges",
+    "count": "{n} / {total}"
+  },
+  "badges_catalog": {
+    "FIRST_STEPS": { "name": "Primeiros Passos", "description": "Completou sua primeira lição" },
+    "QUICK_LEARNER": { "name": "Aprendiz Rápido", "description": "Completou 5 lições" },
+    "LESSON_MASTER": { "name": "Mestre das Lições", "description": "Completou todas as lições da sua trilha" },
+    "PROMPT_PRO": { "name": "Mestre dos Prompts", "description": "Usou 20 prompts guiados" },
+    "PROMPT_MASTER": { "name": "Mestre dos Prompts", "description": "Usou todos os templates de uma lição" },
+    "STREAK_3": { "name": "Trio Vencedor", "description": "Sequência de 3 dias" },
+    "STREAK_7": { "name": "Semana Brilhante", "description": "Sequência de 7 dias" },
+    "STREAK_30": { "name": "Mês de Ouro", "description": "Sequência de 30 dias" },
+    "CHALLENGE_ACE": { "name": "Ás dos Desafios", "description": "Acertou 10 desafios na primeira tentativa" },
+    "CURIOUS_MIND": { "name": "Mente Curiosa", "description": "Explorou 3 trilhas diferentes" },
+    "STORYTELLER": { "name": "Contador de Histórias", "description": "Criou 5 histórias completas no chat" },
+    "POLITE_TALKER": { "name": "Boa Educação", "description": "Usou palavras mágicas em 5 conversas" },
+    "SAFETY_FIRST": { "name": "Segurança Primeiro", "description": "Concluiu a lição de segurança" },
+    "EARLY_BIRD": { "name": "Madrugador", "description": "Aprendeu antes das 9h da manhã" },
+    "LEVEL_5": { "name": "Nível 5", "description": "Alcançou o nível 5" },
+    "LEVEL_10": { "name": "Lendário", "description": "Alcançou o nível 10" },
+    "CAPSTONE_BUILDER": { "name": "Construtor Capstone", "description": "Concluiu o projeto final" }
   },
   "login": {
     "title": "Entrar",

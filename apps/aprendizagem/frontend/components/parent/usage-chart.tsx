@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import type { DailyUsage } from '@/types/api';
 
@@ -8,12 +9,11 @@ interface UsageChartProps {
   childName: string;
 }
 
-/**
- * Gráfico simples de uso diário da criança.
- * Mostra últimos 30 dias em barras.
- */
 export function UsageChart({ usage, childName }: UsageChartProps) {
-  // Preparar dados dos últimos 30 dias
+  const t = useTranslations('usage_chart');
+  const locale = useLocale();
+  const dateLocale = locale === 'en' ? 'en-US' : 'pt-BR';
+
   const last30Days = Array.from({ length: 30 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - (29 - i));
@@ -31,13 +31,14 @@ export function UsageChart({ usage, childName }: UsageChartProps) {
   const maxMinutes = Math.max(...chartData.map(d => d.minutes), 1);
   const totalMinutes = chartData.reduce((sum, d) => sum + d.minutes, 0);
   const avgMinutes = Math.round(totalMinutes / 30);
+  const hasData = totalMinutes > 0;
 
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Uso diário</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
         <div className="text-sm text-gray-600">
-          Média: {avgMinutes}min/dia
+          {t('average_short', { minutes: avgMinutes })}
         </div>
       </div>
 
@@ -51,16 +52,17 @@ export function UsageChart({ usage, childName }: UsageChartProps) {
             <div
               key={day.date}
               className="flex-1 flex flex-col items-center"
-              title={`${new Date(day.date).toLocaleDateString('pt-BR')}: ${day.minutes}min`}
+              title={t('tooltip', {
+                date: new Date(day.date).toLocaleDateString(dateLocale),
+                minutes: day.minutes,
+              })}
             >
               <div
-                className={`
-                  w-full rounded-t transition-all
-                  ${day.minutes > 0
-                    ? (isToday ? 'bg-blue-500' : 'bg-blue-300')
+                className={`w-full rounded-t transition-all ${
+                  day.minutes > 0
+                    ? isToday ? 'bg-blue-500' : 'bg-blue-300'
                     : 'bg-gray-100'
-                  }
-                `}
+                }`}
                 style={{ height: `${Math.max(height, 2)}%` }}
               />
             </div>
@@ -68,27 +70,32 @@ export function UsageChart({ usage, childName }: UsageChartProps) {
         })}
       </div>
 
-      {/* Legenda */}
       <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>30 dias atrás</span>
-        <span>Hoje</span>
+        <span>{t('days_ago')}</span>
+        <span>{t('today')}</span>
       </div>
 
-      {/* Estatísticas adicionais */}
+      {/* Hint quando nao ha dados (causa: heartbeat nao implementado no
+          frontend; sem POST /v1/chat/usage/heartbeat, daily_usage fica
+          vazio. Mostra mensagem em vez de barras vazias mudas). */}
+      {!hasData && (
+        <p className="mt-3 text-center text-xs text-gray-500">{t('empty_hint')}</p>
+      )}
+
       <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
         <div className="text-center">
           <p className="text-lg font-semibold text-gray-900">{totalMinutes}</p>
-          <p className="text-xs text-gray-600">Total (30d)</p>
+          <p className="text-xs text-gray-600">{t('total_30d')}</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold text-gray-900">{avgMinutes}</p>
-          <p className="text-xs text-gray-600">Média diária</p>
+          <p className="text-xs text-gray-600">{t('average_label')}</p>
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold text-gray-900">
             {Math.max(...chartData.map(d => d.minutes))}
           </p>
-          <p className="text-xs text-gray-600">Máximo</p>
+          <p className="text-xs text-gray-600">{t('max_label')}</p>
         </div>
       </div>
     </Card>

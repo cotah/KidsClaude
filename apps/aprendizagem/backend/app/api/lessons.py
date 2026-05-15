@@ -169,10 +169,12 @@ async def get_lesson_detail(lesson_id: str, auth: AnyAuth, db: DBClient):
     Inclui blocos de conteúdo, desafios e prompt templates.
     """
     try:
-        # Busca lição
+        # Busca lição. title_en/content_blocks_en vem da migration 010
+        # (NULL pra dados antigos; OK porque o schema marca como Optional).
         lesson_data = await db.execute_query("""
-            SELECT id, slug, title, description, age_band, order_index,
-                   content_blocks, prerequisites, xp_reward, stage, is_final_exam, claude_model
+            SELECT id, slug, title, title_en, description, age_band, order_index,
+                   content_blocks, content_blocks_en, prerequisites, xp_reward,
+                   stage, is_final_exam, claude_model
             FROM lessons
             WHERE id = $1 AND is_active = true
         """, lesson_id)
@@ -222,16 +224,24 @@ async def get_lesson_detail(lesson_id: str, auth: AnyAuth, db: DBClient):
             for t in templates_data
         ]
 
-        # Processa content_blocks
+        # Processa content_blocks (PT default)
         content_blocks = [
             ContentBlock(**block)
             for block in lesson['content_blocks']
         ]
+        # Versao em ingles (None pra licoes nao traduzidas)
+        content_blocks_en = None
+        if lesson.get('content_blocks_en'):
+            content_blocks_en = [
+                ContentBlock(**block)
+                for block in lesson['content_blocks_en']
+            ]
 
         lesson_detail = LessonDetail(
             id=lesson['id'],
             slug=lesson['slug'],
             title=lesson['title'],
+            title_en=lesson.get('title_en'),
             description=lesson['description'],
             age_band=lesson['age_band'],
             order_index=lesson['order_index'],
@@ -239,6 +249,7 @@ async def get_lesson_detail(lesson_id: str, auth: AnyAuth, db: DBClient):
             is_final_exam=lesson['is_final_exam'],
             claude_model=lesson['claude_model'],
             content_blocks=content_blocks,
+            content_blocks_en=content_blocks_en,
             prerequisites=lesson['prerequisites'] or [],
             xp_reward=lesson['xp_reward'],
             challenges=challenges,

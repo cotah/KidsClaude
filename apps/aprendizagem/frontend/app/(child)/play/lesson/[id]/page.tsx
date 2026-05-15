@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Volume2, ArrowRight, ArrowLeft } from 'lucide-react';
 import type { Route } from 'next';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { lessonsApi } from '@/lib/api/lessons';
  */
 export default function LessonPage() {
   const t = useTranslations('lesson_player');
+  const locale = useLocale();
   const params = useParams();
   const router = useRouter();
   const lessonId = params.id as string;
@@ -71,13 +72,22 @@ export default function LessonPage() {
     }
   };
 
+  // Locale-aware: usa versao EN dos campos quando locale='en' E o backend
+  // tem a traducao (migration 010). Fallback pra PT em qualquer outro caso
+  // (locale=pt OU EN mas licao nao traduzida).
+  const useEnglish = locale === 'en';
+  const displayTitle = useEnglish && lesson?.title_en ? lesson.title_en : lesson?.title;
+  const displayBlocks =
+    useEnglish && lesson?.content_blocks_en && lesson.content_blocks_en.length > 0
+      ? lesson.content_blocks_en
+      : lesson?.content_blocks ?? [];
+
   const handleNext = () => {
     if (!lesson) return;
 
-    if (currentBlock < lesson.content_blocks.length - 1) {
+    if (currentBlock < displayBlocks.length - 1) {
       setCurrentBlock(currentBlock + 1);
     } else {
-      // Ultima tela - ir para desafio
       router.push(`/play/lesson/${lessonId}/challenge` as Route);
     }
   };
@@ -110,8 +120,8 @@ export default function LessonPage() {
     );
   }
 
-  const block = lesson.content_blocks[currentBlock];
-  const progress = ((currentBlock + 1) / lesson.content_blocks.length) * 100;
+  const block = displayBlocks[currentBlock];
+  const progress = ((currentBlock + 1) / displayBlocks.length) * 100;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -119,9 +129,9 @@ export default function LessonPage() {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{lesson.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{displayTitle}</h1>
             <p className="text-gray-600">
-              {t('block_progress', { current: currentBlock + 1, total: lesson.content_blocks.length })}
+              {t('block_progress', { current: currentBlock + 1, total: displayBlocks.length })}
             </p>
           </div>
           <div className="text-right min-w-[100px]">
@@ -202,7 +212,7 @@ export default function LessonPage() {
         </Button>
 
         <div className="flex space-x-2">
-          {lesson.content_blocks.map((_: unknown, index: number) => (
+          {displayBlocks.map((_: unknown, index: number) => (
             <button
               key={index}
               onClick={() => setCurrentBlock(index)}
@@ -213,7 +223,7 @@ export default function LessonPage() {
                     ? 'bg-purple-300'
                     : 'bg-gray-200'
               }`}
-              title={`Bloco ${index + 1}`}
+              title={t('block_progress', { current: index + 1, total: displayBlocks.length })}
             />
           ))}
         </div>
@@ -222,7 +232,7 @@ export default function LessonPage() {
           onClick={handleNext}
           className="bg-purple-600 hover:bg-purple-700"
         >
-          {currentBlock === lesson.content_blocks.length - 1 ? (
+          {currentBlock === displayBlocks.length - 1 ? (
             <>
               {t('challenge')}
               <ArrowRight className="w-4 h-4 ml-2" />

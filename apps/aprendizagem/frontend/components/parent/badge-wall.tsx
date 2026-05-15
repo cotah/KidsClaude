@@ -1,3 +1,6 @@
+'use client';
+
+import { useLocale, useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Award, Lock } from 'lucide-react';
@@ -9,87 +12,88 @@ interface BadgeWallProps {
   compact?: boolean;
 }
 
-/**
- * Mural de badges da criança.
- * Mostra badges desbloqueados e bloqueados.
- */
+// Catalogo dos 12 badges principais. Strings agora vem de
+// messages/badges_catalog.<code>.{name,description}. Icone fica aqui
+// porque nao varia por idioma.
+const BADGE_CATALOG: Array<{ code: string; icon: string }> = [
+  { code: 'FIRST_STEPS', icon: '🎯' },
+  { code: 'QUICK_LEARNER', icon: '⚡' },
+  { code: 'LESSON_MASTER', icon: '👑' },
+  { code: 'PROMPT_PRO', icon: '🎨' },
+  { code: 'STREAK_3', icon: '🔥' },
+  { code: 'STREAK_7', icon: '🌟' },
+  { code: 'STREAK_30', icon: '🏆' },
+  { code: 'CHALLENGE_ACE', icon: '🎪' },
+  { code: 'CURIOUS_MIND', icon: '🧠' },
+  { code: 'STORYTELLER', icon: '📚' },
+  { code: 'LEVEL_5', icon: '🚀' },
+  { code: 'LEVEL_10', icon: '💎' },
+];
+
 export function BadgeWall({ badges, showTitle = false, compact = false }: BadgeWallProps) {
-  // Mock de badges disponíveis (em produção viria da API)
-  const allBadges = [
-    { id: 'FIRST_STEPS', name: 'Primeiros Passos', description: 'Completou sua primeira lição', icon: '🎯' },
-    { id: 'QUICK_LEARNER', name: 'Aprendiz Rápido', description: 'Completou 5 lições', icon: '⚡' },
-    { id: 'LESSON_MASTER', name: 'Mestre das Lições', description: 'Completou todas as lições da sua trilha', icon: '👑' },
-    { id: 'PROMPT_PRO', name: 'Mestre dos Prompts', description: 'Usou 20 prompts guiados', icon: '🎨' },
-    { id: 'STREAK_3', name: 'Trio Vencedor', description: 'Sequência de 3 dias', icon: '🔥' },
-    { id: 'STREAK_7', name: 'Semana Brilhante', description: 'Sequência de 7 dias', icon: '🌟' },
-    { id: 'STREAK_30', name: 'Mês de Ouro', description: 'Sequência de 30 dias', icon: '🏆' },
-    { id: 'CHALLENGE_ACE', name: 'Ás dos Desafios', description: 'Acertou 10 desafios na primeira tentativa', icon: '🎪' },
-    { id: 'CURIOUS_MIND', name: 'Mente Curiosa', description: 'Explorou 3 trilhas diferentes', icon: '🧠' },
-    { id: 'STORYTELLER', name: 'Contador de Histórias', description: 'Criou 5 histórias completas no chat', icon: '📚' },
-    { id: 'LEVEL_5', name: 'Nível 5', description: 'Alcançou o nível 5', icon: '🚀' },
-    { id: 'LEVEL_10', name: 'Lendário', description: 'Alcançou o nível 10', icon: '💎' },
-  ];
+  const t = useTranslations('badge_wall');
+  const tCat = useTranslations('badges_catalog');
+  const locale = useLocale();
+  const dateLocale = locale === 'en' ? 'en-US' : 'pt-BR';
 
   const unlockedBadgeIds = new Set(badges.map(b => b.badge_code));
 
   return (
-    <Card className={compact ? "p-4" : "p-6"}>
+    <Card className={compact ? 'p-4' : 'p-6'}>
       {showTitle && (
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Badges</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('title')}</h3>
           <Badge variant="outline">
-            {badges.length} / {allBadges.length}
+            {t('count', { n: badges.length, total: BADGE_CATALOG.length })}
           </Badge>
         </div>
       )}
 
       <div className={`grid grid-cols-3 ${compact ? 'gap-3' : 'gap-4'}`}>
-        {allBadges.map((badge) => {
-          const isUnlocked = unlockedBadgeIds.has(badge.id);
-          const unlockedBadge = badges.find(b => b.badge_code === badge.id);
+        {BADGE_CATALOG.map((badge) => {
+          const isUnlocked = unlockedBadgeIds.has(badge.code);
+          const unlockedBadge = badges.find(b => b.badge_code === badge.code);
+          const name = tCat(`${badge.code}.name`);
+          const description = tCat(`${badge.code}.description`);
 
           return (
             <div
-              key={badge.id}
-              className={`
-                relative p-3 rounded-lg border-2 transition-all
-                ${isUnlocked
+              key={badge.code}
+              className={`relative p-3 rounded-lg border-2 transition-all ${
+                isUnlocked
                   ? 'border-yellow-300 bg-gradient-to-br from-yellow-50 to-orange-50'
                   : 'border-gray-200 bg-gray-50'
-                }
-              `}
-              title={badge.description}
+              }`}
+              title={description}
             >
-              {/* Badge icon */}
               <div className="text-center mb-2">
-                <div className={`
-                  w-12 h-12 mx-auto rounded-full flex items-center justify-center text-xl
-                  ${isUnlocked
-                    ? 'bg-gradient-to-br from-yellow-400 to-orange-400 text-white'
-                    : 'bg-gray-200 text-gray-400'
-                  }
-                `}>
+                <div
+                  className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center text-xl ${
+                    isUnlocked
+                      ? 'bg-gradient-to-br from-yellow-400 to-orange-400 text-white'
+                      : 'bg-gray-200 text-gray-400'
+                  }`}
+                >
                   {isUnlocked ? badge.icon : <Lock className="w-5 h-5" />}
                 </div>
               </div>
 
-              {/* Badge info */}
               <div className="text-center">
-                <p className={`
-                  text-xs font-medium mb-1
-                  ${isUnlocked ? 'text-gray-900' : 'text-gray-500'}
-                `}>
-                  {badge.name}
+                <p
+                  className={`text-xs font-medium mb-1 ${
+                    isUnlocked ? 'text-gray-900' : 'text-gray-500'
+                  }`}
+                >
+                  {name}
                 </p>
 
                 {unlockedBadge && (
                   <p className="text-xs text-gray-500">
-                    {new Date(unlockedBadge.awarded_at).toLocaleDateString('pt-BR')}
+                    {new Date(unlockedBadge.awarded_at).toLocaleDateString(dateLocale)}
                   </p>
                 )}
               </div>
 
-              {/* Unlock indicator */}
               {isUnlocked && (
                 <div className="absolute -top-1 -right-1">
                   <Award className="w-4 h-4 text-yellow-500" />

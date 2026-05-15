@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import type { Route } from 'next';
 import { ArrowLeft, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ const TYPING_SPEED_MS = 18;
  */
 export default function ChatPage() {
   const t = useTranslations('chat_page');
+  const locale = useLocale();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
@@ -282,7 +283,7 @@ export default function ChatPage() {
         </Button>
         <div className="flex flex-1 items-center justify-center gap-2">
           <h1 className="text-lg font-bold text-gray-800">
-            {t('talk_about', { title: lesson.title })}
+            {t('talk_about', { title: locale === 'en' && lesson.title_en ? lesson.title_en : lesson.title })}
           </h1>
         </div>
         <SafetyStrikes strikes={strikes} max={MAX_STRIKES} />

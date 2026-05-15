@@ -29,9 +29,91 @@
     "level_label": "Level {level}",
     "xp_progress": "{current} / {max} XP",
     "days": "days",
+    "days_count": "{n, plural, one {# day} other {# days}}",
     "badges_one": "badge",
     "badges_other": "badges",
     "logout": "Sign out"
+  },
+  "stage_info": {
+    "1": {
+      "name": "Discovery",
+      "description": "Let's discover what AI is",
+      "age_band_label": "ages 6-8"
+    },
+    "2": {
+      "name": "Exploration",
+      "description": "Understand how prompts work",
+      "age_band_label": "ages 9-10"
+    },
+    "3": {
+      "name": "Creation",
+      "description": "Create things with Claude",
+      "age_band_label": "ages 11-12"
+    },
+    "4": {
+      "name": "Prompt Engineering",
+      "description": "Advanced prompting techniques",
+      "age_band_label": "ages 12+"
+    }
+  },
+  "child_overview": {
+    "title": "General info",
+    "age_label": "Age",
+    "age_unit": "{age} years old",
+    "avatar_label": "Avatar",
+    "level_label": "Level",
+    "level_n": "Level {level}",
+    "streak_label": "Streak",
+    "streak_active": "{days, plural, one {# day} other {# days}}",
+    "streak_none": "No active streak",
+    "daily_limit_label": "Daily limit",
+    "daily_limit_unit": "{minutes} minutes",
+    "last_active_label": "Last active",
+    "never": "Never"
+  },
+  "progress_list": {
+    "title": "Lesson progress",
+    "overall": "Overall progress",
+    "empty": "No lessons started yet",
+    "completed_at": "Completed on {date}",
+    "lesson_fallback": "Lesson {short}",
+    "status_completed": "Completed",
+    "status_in_progress": "In progress",
+    "status_not_started": "Not started"
+  },
+  "usage_chart": {
+    "title": "Daily usage",
+    "average_short": "Avg: {minutes}min/day",
+    "days_ago": "30 days ago",
+    "today": "Today",
+    "total_30d": "Total (30d)",
+    "average_label": "Daily average",
+    "max_label": "Maximum",
+    "tooltip": "{date}: {minutes}min",
+    "empty_hint": "No usage recorded yet"
+  },
+  "badge_wall": {
+    "title": "Badges",
+    "count": "{n} / {total}"
+  },
+  "badges_catalog": {
+    "FIRST_STEPS": { "name": "First Steps", "description": "Completed your first lesson" },
+    "QUICK_LEARNER": { "name": "Quick Learner", "description": "Completed 5 lessons" },
+    "LESSON_MASTER": { "name": "Lesson Master", "description": "Completed all lessons in your track" },
+    "PROMPT_PRO": { "name": "Prompt Pro", "description": "Used 20 guided prompts" },
+    "PROMPT_MASTER": { "name": "Prompt Master", "description": "Used all templates of a lesson" },
+    "STREAK_3": { "name": "Three in a Row", "description": "3-day streak" },
+    "STREAK_7": { "name": "Bright Week", "description": "7-day streak" },
+    "STREAK_30": { "name": "Gold Month", "description": "30-day streak" },
+    "CHALLENGE_ACE": { "name": "Challenge Ace", "description": "Got 10 challenges right on the first try" },
+    "CURIOUS_MIND": { "name": "Curious Mind", "description": "Explored 3 different tracks" },
+    "STORYTELLER": { "name": "Storyteller", "description": "Created 5 complete stories in chat" },
+    "POLITE_TALKER": { "name": "Polite Talker", "description": "Used magic words in 5 conversations" },
+    "SAFETY_FIRST": { "name": "Safety First", "description": "Completed the safety lesson" },
+    "EARLY_BIRD": { "name": "Early Bird", "description": "Learned before 9am" },
+    "LEVEL_5": { "name": "Level 5", "description": "Reached level 5" },
+    "LEVEL_10": { "name": "Legendary", "description": "Reached level 10" },
+    "CAPSTONE_BUILDER": { "name": "Capstone Builder", "description": "Completed the final project" }
   },
   "login": {
     "title": "Sign in",

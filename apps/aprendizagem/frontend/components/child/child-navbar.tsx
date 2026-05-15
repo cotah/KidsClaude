@@ -129,7 +129,12 @@ export function ChildNavbar() {
                 <Flame className="w-5 h-5 text-orange-500" />
                 <div className="text-center">
                   <p className="font-bold text-orange-700">{childData.streak_days}</p>
-                  <p className="text-xs text-orange-600">{t('days')}</p>
+                  <p className="text-xs text-orange-600">
+                    {/* days_count cuida do plural via ICU; passamos 0 pra
+                        suprimir o numero (ja' aparece em <p> em cima) e
+                        usamos so' a palavra. Solucao mais simples: split */}
+                    {childData.streak_days === 1 ? t('days').replace(/s$/, '') : t('days')}
+                  </p>
                 </div>
               </div>
             )}
