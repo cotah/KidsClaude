@@ -6,6 +6,7 @@
     "delete": "Apagar",
     "loading": "Carregando...",
     "error_generic": "Algo deu errado. Tente novamente.",
+    "unknown_error": "Erro desconhecido",
     "yes": "Sim",
     "no": "Não"
   },

@@ -10,7 +10,7 @@ import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useToast } from '@/components/ui/toast';
 import { authApi } from '@/lib/api/auth';
 import useAppStore from '@/lib/store/app-store';
-import { getApiErrorMessage } from '@/lib/api/client';
+import { getApiErrorMessage, isUnknownErrorFallback } from '@/lib/api/client';
 
 /**
  * Login direto da crianca (username + PIN). Independente do device do pai.
@@ -78,7 +78,7 @@ export default function ChildDirectLoginPage() {
       } else {
         // Tenta extrair mensagem do backend; cai no generico se nao houver.
         const fromApi = getApiErrorMessage(error);
-        if (fromApi && fromApi !== 'Erro desconhecido' && fromApi !== 'Erro inesperado') {
+        if (fromApi && !isUnknownErrorFallback(fromApi) && fromApi !== 'Erro inesperado') {
           message = fromApi;
         }
       }

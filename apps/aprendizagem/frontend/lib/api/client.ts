@@ -37,7 +37,7 @@ class ApiClient {
               (error as any).status = response.status;
               try {
                 const errorData = (await response.json()) as ApiError;
-                error.message = errorData.error?.message || 'Erro desconhecido';
+                error.message = errorData.error?.message || getUnknownErrorMessage();
                 (error as any).apiError = errorData;
               } catch {
                 // Resposta nao-JSON, mantem mensagem original do ky.
@@ -160,4 +160,29 @@ export function getApiErrorCode(error: any): string | null {
 export function getApiErrorMessage(error: any): string {
   if (isApiError(error)) return error.apiError.error.message;
   return error?.message || 'Erro inesperado';
+}
+
+// Espelha a chave i18n common.unknown_error (messages/{en,pt}.json).
+// Usado pelo beforeError hook do ky, que roda fora do React e nao pode chamar
+// useTranslations. Le o cookie 'locale' (mesmo cookie que i18n/request.ts).
+const UNKNOWN_ERROR_BY_LOCALE: Record<string, string> = {
+  en: 'Unknown error',
+  pt: 'Erro desconhecido',
+};
+
+function readLocaleFromCookie(): 'en' | 'pt' {
+  if (typeof document === 'undefined') return 'en';
+  const match = document.cookie.match(/(?:^|;\s*)locale=(en|pt)\b/);
+  return (match?.[1] as 'en' | 'pt') ?? 'en';
+}
+
+export function getUnknownErrorMessage(): string {
+  return UNKNOWN_ERROR_BY_LOCALE[readLocaleFromCookie()];
+}
+
+// True se a mensagem e' o fallback localizado de "unknown error" - usado
+// como sentinel por consumidores que querem decidir se cai no proprio t().
+export function isUnknownErrorFallback(msg: string | undefined | null): boolean {
+  if (!msg) return false;
+  return Object.values(UNKNOWN_ERROR_BY_LOCALE).includes(msg);
 }
