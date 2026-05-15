@@ -35,6 +35,9 @@ export default function LessonDonePage() {
       .complete(lessonId)
       .then((res) => {
         if (cancelled) return;
+        // Log completo pra debug do bug "XP nao atualiza" - mostra exatamente
+        // o shape vindo do backend. Apaga depois que estabilizar.
+        console.log('[done] /complete response:', res);
         setCompletion(res);
         // Atualiza currentChild no zustand pra que XPProgress no header e
         // ChildNavbar reflitam o novo XP/level imediatamente. Sem isso,
@@ -98,7 +101,7 @@ export default function LessonDonePage() {
     );
   }
 
-  const { xp_total, level, badges_unlocked } = completion;
+  const { xp_earned, xp_total, level, badges_unlocked } = completion;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4">
@@ -110,6 +113,15 @@ export default function LessonDonePage() {
         <MascotBubble variant="excited">
           <strong>Parabens!</strong> Voce concluiu mais uma licao!
         </MascotBubble>
+
+        {/* Banner do XP recem-ganho. Quando xp_earned=0 (re-conclusao),
+            esconde a faixa pra nao confundir a crianca com "+0 XP". */}
+        {xp_earned > 0 && (
+          <div className="rounded-xl border-2 border-sunny-400 bg-sunny-100 p-3">
+            <p className="text-2xl font-extrabold text-sunny-800">+{xp_earned} XP!</p>
+            <p className="text-xs text-sunny-700">recompensa desta licao</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 pt-2">
           <div className="rounded-xl border border-sunny-300 bg-white p-4">

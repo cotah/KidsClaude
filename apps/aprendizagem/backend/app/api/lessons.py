@@ -345,12 +345,14 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient):
         progress = progress_data[0]
 
         if progress['status'] == 'completed':
-            # Já concluída, retorna dados atuais sem conceder XP novamente
+            # Já concluída, retorna dados atuais sem conceder XP novamente.
+            # xp_earned=0 sinaliza pro frontend que nao houve recompensa nova.
             current_child = await db.execute_query(
                 "SELECT xp, level FROM children WHERE id = $1",
                 auth.user_id
             )
             return LessonCompleteResponse(
+                xp_earned=0,
                 xp_total=current_child[0]['xp'],
                 level=current_child[0]['level'],
                 badges_unlocked=[]
@@ -413,6 +415,7 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient):
         ]
 
         return LessonCompleteResponse(
+            xp_earned=xp_reward,
             xp_total=result['xp_total'],
             level=result['level'],
             badges_unlocked=badges_unlocked,

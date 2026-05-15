@@ -83,6 +83,10 @@ class BadgeInfo(BaseModel):
 
 
 class LessonCompleteResponse(BaseModel):
+    # XP ganho NESTA conclusao (xp_reward da licao). 0 se a licao ja
+    # estava completed antes (re-conclusao nao re-concede). Frontend usa
+    # pra mostrar "+50 XP!" na tela de Parabens.
+    xp_earned: int = 0
     xp_total: int
     level: int
     badges_unlocked: List[BadgeInfo]

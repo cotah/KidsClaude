@@ -167,6 +167,8 @@ export interface LessonProgress {
 }
 
 export interface LessonCompletionResponse {
+  // XP ganho NESTA conclusao. 0 se a licao ja estava completed antes.
+  xp_earned: number;
   xp_total: number;
   level: number;
   badges_unlocked: Badge[];
