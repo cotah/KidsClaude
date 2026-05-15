@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { LogOut, Star, Award, Flame } from 'lucide-react';
@@ -12,13 +13,41 @@ import { authApi } from '@/lib/api/auth';
 import { config } from '@/lib/config';
 import { calculateLevelInfo, getLevelFloor } from '@/lib/utils';
 import useAppStore from '@/lib/store/app-store';
+import type { Child } from '@/types/api';
 
 /**
  * Navbar para crianças com mascote, XP, streak e saída.
  */
 export function ChildNavbar() {
   const router = useRouter();
-  const { currentChild } = useAppStore();
+  const { currentChild, setCurrentChild } = useAppStore();
+
+  // Sync defensivo: busca o registro da crianca no backend e sincroniza
+  // o zustand. GET /v1/children com auth de crianca devolve so' o proprio
+  // registro (com xp/level/streak/badges_cleaned_at atualizados). Cobre o
+  // caso onde o setCurrentChild do done page nao rodou (ex: chat crashou
+  // e a crianca nunca chegou na tela de Parabens) - sem isso, navbar
+  // mostra XP velho do zustand persist.
+  const { data: freshChildren } = useQuery({
+    queryKey: ['my-child', currentChild?.id],
+    queryFn: async () => apiClient.get<Child[]>('children'),
+    enabled: !!currentChild?.id,
+    staleTime: 10_000,
+  });
+
+  useEffect(() => {
+    if (!freshChildren || !currentChild?.id) return;
+    const fresh = freshChildren.find((c) => c.id === currentChild.id);
+    if (!fresh) return;
+    // So' atualiza se algo mudou - evita re-render em loop.
+    if (
+      fresh.xp !== currentChild.xp ||
+      fresh.level !== currentChild.level ||
+      fresh.streak_days !== currentChild.streak_days
+    ) {
+      setCurrentChild({ ...(currentChild as Child), ...fresh });
+    }
+  }, [freshChildren, currentChild, setCurrentChild]);
 
   // Defensivo: se o login da crianca devolveu um objeto incompleto, garantimos
   // que xp/level/streak nao virem undefined (que estoura NaN na barra de XP e

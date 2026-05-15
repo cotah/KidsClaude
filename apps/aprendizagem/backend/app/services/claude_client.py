@@ -66,24 +66,25 @@ Idade da criança: {child_age} anos"""
             messages = conversation_history or []
             messages.append({"role": "user", "content": message})
 
-            # Configuração com cache (ephemeral)
-            cache_config = {
-                "type": "ephemeral"
-            }
-
             # Usa modelo da lição ou padrão
             model_to_use = claude_model or self.model
 
+            # Prompt caching: o cache_control vai DENTRO do bloco system, nao
+            # como kwarg top-level (kwarg invalido fazia messages.create()
+            # estourar TypeError -> 503/500 silencioso a cada mensagem do
+            # chat). Caching e' GA agora, header beta opcional.
             response = await self.client.messages.create(
                 model=model_to_use,
                 max_tokens=200,  # Respostas curtas para crianças
                 temperature=0.7,  # Criatividade moderada
-                system=system_prompt,
+                system=[
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
                 messages=messages,
-                extra_headers={
-                    "anthropic-beta": "prompt-caching-2024-07-31"
-                } if conversation_history is None else {},  # Cache apenas na primeira
-                cache_control=cache_config if conversation_history is None else None
             )
 
             content = response.content[0].text if response.content else ""

@@ -291,8 +291,17 @@ async def send_message(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Erro ao enviar mensagem", error=str(e))
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # logger.exception inclui traceback - critico pra diagnosticar erros
+        # do Claude/moderacao em producao. detail.error.message inclui o tipo
+        # da exception pra o frontend nao mostrar so' "Erro desconhecido".
+        logger.exception("Erro ao enviar mensagem", error=str(e), error_type=type(e).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {
+                "code": "MESSAGE_SEND_ERROR",
+                "message": f"Falha ao processar mensagem: {type(e).__name__}",
+            }},
+        )
 
 
 @router.post("/sessions/{session_id}/end", response_model=ChatSessionEndResponse)
