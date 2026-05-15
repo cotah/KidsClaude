@@ -84,10 +84,13 @@ export default function ChatPage() {
     });
   }, [messages, pendingText]);
 
-  // Filtra templates pela faixa etaria da crianca.
-  const templates: PromptTemplate[] = (lesson?.prompt_templates ?? []).filter(
-    (t) => t.age_band === ageGroup
-  );
+  // Mostra TODOS os templates da licao - o age_band do template servia
+  // como filtro global, mas dentro de uma licao a lista ja foi curada
+  // pra aquela faixa. Filtrar de novo zerava as sugestoes quando a idade
+  // da crianca nao casava perfeitamente (ex: 8 anos numa licao da Stage 2,
+  // cujo age_band e' '9-10'). Se quiser priorizar por idade no futuro,
+  // ordene em vez de filtrar.
+  const templates: PromptTemplate[] = lesson?.prompt_templates ?? [];
 
   // Anima a resposta da Claude caractere a caractere para criar a sensacao de stream.
   const animateAssistant = useCallback(

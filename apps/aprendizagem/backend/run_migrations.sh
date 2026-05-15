@@ -90,4 +90,19 @@ else
     echo "[migrate] 006 already applied (username column present), skipping"
 fi
 
+# Gate 007: 2 templates extras por licao (16 -> 48 templates totais).
+# Detectamos via label canonica que so' aparece no seed da 007.
+HAS_EXTRA_TEMPLATES=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM prompt_templates WHERE label = 'Curiosidade legal sobre IA');" 2>/dev/null | tr -d ' \n')
+
+if [ -z "$HAS_EXTRA_TEMPLATES" ] || [ "$HAS_EXTRA_TEMPLATES" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 007..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 007_more_prompt_templates.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/007_more_prompt_templates.sql
+    echo "[migrate] 007 done"
+else
+    echo "[migrate] 007 already applied (extra templates present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
