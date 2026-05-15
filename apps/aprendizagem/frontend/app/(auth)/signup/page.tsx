@@ -6,53 +6,61 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useToast } from '@/components/ui/toast';
 import { authApi } from '@/lib/api';
-import { getPasswordValidationErrors } from '@/lib/utils';
-
-// Schema de validação conforme spec seção 4 (US-01)
-const signupSchema = z.object({
-  email: z
-    .string()
-    .email('Email inválido')
-    .min(1, 'Email é obrigatório'),
-  password: z
-    .string()
-    .min(8, 'Mínimo 8 caracteres')
-    .regex(/[a-zA-Z]/, 'Deve conter pelo menos uma letra')
-    .regex(/\d/, 'Deve conter pelo menos um número'),
-  confirmPassword: z.string().min(1, 'Confirmação é obrigatória'),
-  displayName: z.string().optional(),
-  termsAccepted: z.boolean().refine(val => val === true, {
-    message: 'Você deve aceitar os termos',
-  }),
-  consentAccepted: z.boolean().refine(val => val === true, {
-    message: 'Consentimento para uso de IA é obrigatório',
-  }),
-}).refine(data => data.password === data.confirmPassword, {
-  message: 'Senhas não conferem',
-  path: ['confirmPassword'],
-});
-
-type SignupFormData = z.infer<typeof signupSchema>;
 
 /**
- * Página de cadastro de responsável - conforme spec seção 8.1
+ * Página de cadastro do responsável.
+ * Strings via next-intl (cookie-based locale, default 'en').
+ *
+ * Schema zod construido com t no useMemo - validation messages reagem
+ * ao locale switch sem reload (mesmo padrao do /login).
  */
 export default function SignupPage() {
+  const t = useTranslations('signup');
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
 
+  const signupSchema = React.useMemo(
+    () =>
+      z
+        .object({
+          displayName: z.string().min(2, t('name_min')),
+          email: z.string().email(t('email_invalid')).min(1, t('email_required')),
+          password: z
+            .string()
+            .min(8, t('password_min'))
+            .regex(/[a-zA-Z]/, t('password_letter'))
+            .regex(/\d/, t('password_number')),
+          confirmPassword: z.string().min(1, t('confirm_password_required')),
+          termsAccepted: z.boolean().refine((v) => v === true, {
+            message: t('terms_required'),
+          }),
+          consentAccepted: z.boolean().refine((v) => v === true, {
+            message: t('consent_required'),
+          }),
+        })
+        .refine((d) => d.password === d.confirmPassword, {
+          message: t('passwords_dont_match'),
+          path: ['confirmPassword'],
+        }),
+    [t]
+  );
+
+  type SignupFormData = z.infer<typeof signupSchema>;
+
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
+      displayName: '',
       email: '',
       password: '',
       confirmPassword: '',
-      displayName: '',
       termsAccepted: false,
       consentAccepted: false,
     },
@@ -62,33 +70,33 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // parentSignup ja persiste a sessao via route handler (cookie httpOnly)
+      // parentSignup ja' persiste a sessao via route handler (cookie httpOnly)
       await authApi.parentSignup({
         email: data.email,
         password: data.password,
-        display_name: data.displayName || undefined,
+        display_name: data.displayName,
       });
 
       toast({
         type: 'success',
-        title: 'Conta criada com sucesso!',
-        description: 'Bem-vindo ao Aprendizagem. Vamos configurar o perfil do seu filho.',
+        title: t('toast_success_title'),
+        description: t('toast_success_desc'),
       });
 
-      router.push('/children/new');
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Signup error:', error);
 
-      let message = 'Erro ao criar conta. Tente novamente.';
+      let message = t('toast_generic_error');
       if (error?.status === 409) {
-        message = 'Este email já está cadastrado. Tente fazer login.';
+        message = t('toast_email_exists');
       } else if (error?.status === 422) {
-        message = 'Dados inválidos. Verifique as informações digitadas.';
+        message = t('toast_invalid_data');
       }
 
       toast({
         type: 'error',
-        title: 'Erro no cadastro',
+        title: t('toast_error_title'),
         description: message,
       });
     } finally {
@@ -96,33 +104,47 @@ export default function SignupPage() {
     }
   };
 
-  // Validação da senha em tempo real
-  const passwordValue = form.watch('password');
-  const passwordErrors = passwordValue ? getPasswordValidationErrors(passwordValue) : [];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Crie sua conta
-          </CardTitle>
-          <p className="text-center text-gray-600">
-            Para começar a aventura digital dos seus filhos
-          </p>
+          <div className="flex justify-end">
+            <LanguageSwitcher />
+          </div>
+          <CardTitle className="text-2xl font-bold text-center">{t('title')}</CardTitle>
+          <p className="text-center text-gray-600">{t('subtitle')}</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Nome completo */}
+            <div className="space-y-2">
+              <label htmlFor="displayName" className="text-sm font-medium">
+                {t('name_label')}
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder={t('name_placeholder')}
+                {...form.register('displayName')}
+              />
+              {form.formState.errors.displayName && (
+                <p className="text-sm text-red-600">
+                  {form.formState.errors.displayName.message}
+                </p>
+              )}
+            </div>
+
             {/* Email */}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
-                Email *
+                {t('email_label')}
               </label>
               <input
                 id="email"
                 type="email"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="seu.email@exemplo.com"
+                placeholder={t('email_placeholder')}
                 {...form.register('email')}
               />
               {form.formState.errors.email && (
@@ -132,30 +154,16 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Nome (opcional) */}
-            <div className="space-y-2">
-              <label htmlFor="displayName" className="text-sm font-medium">
-                Seu nome (opcional)
-              </label>
-              <input
-                id="displayName"
-                type="text"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Como prefere ser chamado?"
-                {...form.register('displayName')}
-              />
-            </div>
-
             {/* Senha */}
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
-                Senha *
+                {t('password_label')}
               </label>
               <input
                 id="password"
                 type="password"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Mínimo 8 caracteres"
+                placeholder={t('password_placeholder')}
                 {...form.register('password')}
               />
               {form.formState.errors.password && (
@@ -163,28 +171,18 @@ export default function SignupPage() {
                   {form.formState.errors.password.message}
                 </p>
               )}
-              {passwordErrors.length > 0 && (
-                <div className="text-xs text-gray-600">
-                  <p>Sua senha precisa de:</p>
-                  <ul className="list-disc list-inside ml-2">
-                    {passwordErrors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
 
             {/* Confirmar Senha */}
             <div className="space-y-2">
               <label htmlFor="confirmPassword" className="text-sm font-medium">
-                Confirmar Senha *
+                {t('confirm_password_label')}
               </label>
               <input
                 id="confirmPassword"
                 type="password"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Digite a senha novamente"
+                placeholder={t('confirm_password_placeholder')}
                 {...form.register('confirmPassword')}
               />
               {form.formState.errors.confirmPassword && (
@@ -194,7 +192,7 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Termos e Consentimento - conforme spec seção 10.2 */}
+            {/* Termos + consentimento (legal compliance LGPD/COPPA) */}
             <div className="space-y-3 pt-4">
               <div className="flex items-start space-x-2">
                 <input
@@ -203,9 +201,11 @@ export default function SignupPage() {
                   className="mt-1 h-4 w-4 rounded border-gray-300"
                   {...form.register('termsAccepted')}
                 />
-                <label htmlFor="termsAccepted" className="text-xs text-gray-700 leading-tight">
-                  Li e aceito os termos de uso e a politica de privacidade.
-                  Confirmo que sou maior de idade e responsavel legal pela(s) crianca(s).
+                <label
+                  htmlFor="termsAccepted"
+                  className="text-xs text-gray-700 leading-tight"
+                >
+                  {t('terms_label')}
                 </label>
               </div>
               {form.formState.errors.termsAccepted && (
@@ -221,10 +221,11 @@ export default function SignupPage() {
                   className="mt-1 h-4 w-4 rounded border-gray-300"
                   {...form.register('consentAccepted')}
                 />
-                <label htmlFor="consentAccepted" className="text-xs text-gray-700 leading-tight">
-                  Autorizo o uso de inteligência artificial (Claude) para interação educativa
-                  com meu(s) filho(s), ciente de que todas as conversas são moderadas e
-                  podem ser revisadas por mim.
+                <label
+                  htmlFor="consentAccepted"
+                  className="text-xs text-gray-700 leading-tight"
+                >
+                  {t('consent_label')}
                 </label>
               </div>
               {form.formState.errors.consentAccepted && (
@@ -241,15 +242,18 @@ export default function SignupPage() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? 'Criando conta...' : 'Criar Conta'}
+              {isLoading ? t('submitting') : t('submit')}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Já tem uma conta?{' '}
-              <Link href="/login" className="text-sunny-600 hover:underline font-medium">
-                Faça login
+              {t('have_account')}{' '}
+              <Link
+                href="/login"
+                className="text-sunny-600 hover:underline font-medium"
+              >
+                {t('login_link')}
               </Link>
             </p>
           </div>
