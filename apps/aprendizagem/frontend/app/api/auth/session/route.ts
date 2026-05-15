@@ -67,13 +67,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
-  // Logout: zera ambos os cookies via maxAge=0 (browser remove na hora).
+export async function DELETE(request: NextRequest) {
+  // Logout: zera cookies via maxAge=0. Aceita ?type=child|parent pra
+  // limpar so' um. Sem param, zera ambos (logout completo).
+  // Caso de uso pra type=child: navbar do /play "Sair" - limpa criança
+  // mas mantem pai logado pra que /select continue funcionando.
+  const url = new URL(request.url);
+  const type = url.searchParams.get('type');
+
+  const namesToDelete: string[] = [];
+  if (type === 'child') {
+    namesToDelete.push(config.auth.childCookieName);
+  } else if (type === 'parent') {
+    namesToDelete.push(config.auth.parentCookieName);
+  } else {
+    namesToDelete.push(
+      config.auth.parentCookieName,
+      config.auth.childCookieName,
+    );
+  }
+
   const response = NextResponse.json({ success: true });
-  for (const name of [
-    config.auth.parentCookieName,
-    config.auth.childCookieName,
-  ]) {
+  for (const name of namesToDelete) {
     response.cookies.set({
       name,
       value: '',

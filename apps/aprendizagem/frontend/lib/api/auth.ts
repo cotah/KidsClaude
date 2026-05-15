@@ -92,13 +92,18 @@ export const authApi = {
     });
   },
 
-  async clearSession(): Promise<void> {
+  async clearSession(type?: 'child' | 'parent'): Promise<void> {
     const sessionClient = ky.create({
       prefixUrl: typeof window !== 'undefined' ? window.location.origin : '',
     });
 
+    // type='child': limpa so' o cookie de crianca (mantem pai logado).
+    // type='parent': limpa so' o cookie de pai.
+    // sem type: limpa ambos (logout completo).
+    const url = type ? `api/auth/session?type=${type}` : 'api/auth/session';
+
     try {
-      await sessionClient.delete('api/auth/session');
+      await sessionClient.delete(url);
     } catch {
       // Falhar silenciosamente - logout sempre deve funcionar
     }

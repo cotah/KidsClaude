@@ -30,19 +30,29 @@ export default function LessonPage() {
     queryFn: () => lessonsApi.get(lessonId),
   });
 
-  // Marcar lição como iniciada
+  // Marcar lição como iniciada. Erros tratados:
+  //  - 403 LESSON_LOCKED: redireciona pra stage (crianca tentou pular).
+  //  - 409 ALREADY_STARTED: SUCESSO silencioso. Crianca esta revisando
+  //    licao ja' completa OU re-entrando em progresso - nao e' erro,
+  //    page renderiza normal. Sem isso, toast/error UI aparecia ao
+  //    tentar "Rever" uma licao concluida.
+  //  - Outros: silencioso (page ja' renderiza com dados da useQuery).
   const startLessonMutation = useMutation({
     mutationFn: () => lessonsApi.start(lessonId),
     onError: (error: any) => {
-      // Se lição estiver bloqueada (403 LESSON_LOCKED), redirecionar
-      if (error?.response?.status === 403) {
+      const status = error?.response?.status;
+      const code = error?.apiError?.error?.code;
+      if (status === 403 || code === 'LESSON_LOCKED') {
         const stageId = lesson?.stage;
         if (stageId) {
           router.push(`/play/stage/${stageId}` as any);
         } else {
           router.push('/play');
         }
+        return;
       }
+      // 409 ALREADY_STARTED e qualquer outro: ignora. Page ja' funciona
+      // com lesson data carregado via useQuery acima.
     },
   });
 

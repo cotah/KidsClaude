@@ -183,4 +183,22 @@ else
     echo "[migrate] 012 already applied (lessons.description_en present), skipping"
 fi
 
+# Gate 013: re-aplica UPDATEs de title_en/description_en porque em
+# producao a coluna existe mas todos os valores estao NULL (010/012
+# rodaram ALTER mas as UPDATEs nao bateram - causa nao identificada).
+# Sentinel: title_en IS NULL na slug canonica. Quando NULL -> roda;
+# apos sucesso, NULL vira string -> gate fica false.
+TITLE_EN_NULL=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-e-ia' AND title_en IS NULL);" 2>/dev/null | tr -d ' \n')
+
+if [ "$TITLE_EN_NULL" = "t" ]; then
+    echo "[migrate] clearing any aborted transaction state before 013..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 013_force_lesson_translations.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/013_force_lesson_translations.sql
+    echo "[migrate] 013 done"
+else
+    echo "[migrate] 013 already applied (title_en populated), skipping"
+fi
+
 echo "[migrate] done. starting server..."

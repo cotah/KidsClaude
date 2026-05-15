@@ -86,8 +86,11 @@ export function ChildNavbar() {
   const nextLevelXp = getLevelFloor(levelInfo.current + 1);
 
   const handleLogout = async () => {
-    await authApi.clearSession();
-    router.push('/select');
+    // Limpa SO' o cookie de crianca - mantem pai logado se houver, pra
+    // que /select funcione (middleware exige parent token). switch-profile
+    // server-side decide entre /select (tem pai) ou /crianca (so child).
+    await authApi.clearSession('child');
+    router.push('/play/switch-profile');
   };
 
   return (
