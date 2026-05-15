@@ -80,10 +80,21 @@ class ModerationService:
         return patterns
 
     def _check_blocklist(self, text: str) -> ModerationResult:
-        """Verifica se texto contém termos da blocklist."""
-        text_lower = text.lower()
+        """
+        Verifica se texto contém termos da blocklist como PALAVRA INTEIRA.
+
+        Antes usava substring (`term in text`), o que gerava falsos positivos
+        catastroficos em portugues:
+          - "ass" (EN) bloqueava "passo", "massa", "assim", "classe", etc.
+          - "die" (EN) bloqueava "dieta"
+          - "war" (EN) bloqueava "swarm"
+        Agora cada termo vira regex com word-boundaries (\b) e match
+        case-insensitive. Frases (ex: "fazer amor", "matar-se") continuam
+        funcionando porque \b casa entre word/non-word chars.
+        """
         for term in self.blocklist:
-            if term in text_lower:
+            pattern = r'\b' + re.escape(term) + r'\b'
+            if re.search(pattern, text, flags=re.IGNORECASE):
                 logger.warning("Termo da blocklist detectado", term=term)
                 return ModerationResult(
                     is_safe=False,
@@ -182,33 +193,40 @@ Se for apropriado, responda:
             else:
                 return ModerationResult(is_safe=True)
 
-    async def moderate_input(self, text: str) -> None:
+    async def moderate_input(self, text: str, bypass_blocklist: bool = False) -> None:
         """
         Modera input da criança. Levanta InputModerationError se bloqueado.
         Executa todas as verificações em sequência.
-        """
-        # 1. Verificar blocklist
-        result = self._check_blocklist(text)
-        if not result.is_safe:
-            raise InputModerationError(result.reason, result.category)
 
-        # 2. Verificar PII
+        bypass_blocklist=True pula a checagem de blocklist e a classificacao
+        Claude. Usado quando o texto vem de um prompt_template curado por
+        adultos (ja' revisado). PII e length continuam ativos pra pegar
+        slot values com email/telefone digitados pela crianca.
+        """
+        # 1. Verificar blocklist (pula se template curado)
+        if not bypass_blocklist:
+            result = self._check_blocklist(text)
+            if not result.is_safe:
+                raise InputModerationError(result.reason, result.category)
+
+        # 2. Verificar PII (sempre - pega slot values com dados pessoais)
         result = self._check_pii(text)
         if not result.is_safe:
             raise InputModerationError(result.reason, result.category)
 
-        # 3. Verificar tamanho
+        # 3. Verificar tamanho (sempre)
         result = self._check_length(text)
         if not result.is_safe:
             raise InputModerationError(result.reason, result.category)
 
-        # 4. Classificar com Claude (se strict mode)
-        if settings.moderation_strict:
+        # 4. Classificar com Claude (so' em strict mode E nao-template).
+        # Pular Claude pra templates economiza ~1-2s por mensagem e custo.
+        if settings.moderation_strict and not bypass_blocklist:
             result = await self._classify_content(text, is_output=False)
             if not result.is_safe:
                 raise InputModerationError(result.reason, result.category)
 
-        logger.info("Input aprovado na moderação", length=len(text))
+        logger.info("Input aprovado na moderação", length=len(text), bypass=bypass_blocklist)
 
     async def moderate_output(self, text: str) -> Tuple[bool, str, str]:
         """

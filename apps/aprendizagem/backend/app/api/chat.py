@@ -190,10 +190,15 @@ async def send_message(
                 request.slots
             )
 
-        # MODERAÇÃO DE INPUT
+        # MODERAÇÃO DE INPUT.
+        # bypass_blocklist=True porque o texto vem de prompt_template curado
+        # por adultos (revisado nas migrations 005/007). PII e length seguem
+        # ativos pra pegar slot values digitados pela crianca com email/
+        # telefone. Sem isso, "passo a passo" caia em "ass" da blocklist EN
+        # via match por substring (corrigido tambem em moderation._check_blocklist).
         try:
             moderation = ModerationService()
-            await moderation.moderate_input(message_content)
+            await moderation.moderate_input(message_content, bypass_blocklist=True)
         except InputModerationError as e:
             # Registra mensagem bloqueada
             await db.execute_non_query("""
