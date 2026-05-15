@@ -163,7 +163,7 @@
     "xp_total": "{xp} XP total",
     "today": "Today:",
     "streak": "Streak:",
-    "streak_days": "🔥 {days} days",
+    "streak_days": "🔥 {days, plural, one {# day} other {# days}}",
     "achievements": "Achievements:",
     "badges_count": "{count} badges",
     "view_details": "View Details",
