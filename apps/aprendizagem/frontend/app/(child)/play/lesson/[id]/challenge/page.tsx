@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Route } from 'next';
 import { ArrowRight, CheckCircle, XCircle, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import { MascotBubble } from '@/components/ui/mascot-bubble';
 import { useToast } from '@/components/ui/toast';
 import { lessonsApi, challengesApi } from '@/lib/api/lessons';
 import { getApiErrorMessage } from '@/lib/api/client';
-import type { Challenge, ChallengeAttemptResponse } from '@/types/api';
+import useAppStore from '@/lib/store/app-store';
+import type { Challenge, ChallengeAttemptResponse, Child } from '@/types/api';
 
 /**
  * Player de desafio - tipo multiple_choice (MVP).
@@ -21,6 +22,8 @@ export default function ChallengePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { currentChild, setCurrentChild } = useAppStore();
   const lessonId = params.id;
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -46,6 +49,22 @@ export default function ChallengePage() {
         answer: { answer: selectedIndex },
       });
       setResult(res);
+
+      // Atualiza XP no header imediatamente quando o challenge da' XP.
+      // Backend gravou +xp_earned em children.xp; sem isso, o XPBar fica
+      // congelado ate' a crianca chegar em /done (que ja faz o sync). Nivel
+      // nao recalcula aqui - challenge sozinho raramente atravessa um
+      // threshold de nivel; quando atravessa, /done corrige no fim.
+      if (res.is_correct && res.xp_earned > 0 && currentChild) {
+        setCurrentChild({
+          ...(currentChild as Child),
+          xp: currentChild.xp + res.xp_earned,
+        });
+        // Badges sao avaliados no award_xp do backend; invalida pra que
+        // a contagem na ChildNavbar reflita um badge eventual (ex:
+        // CHALLENGE_ACE depois do 10o acerto na 1a tentativa).
+        queryClient.invalidateQueries({ queryKey: ['child-badges'] });
+      }
     } catch (err) {
       toast({
         type: 'error',

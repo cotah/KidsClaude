@@ -19,6 +19,7 @@ from app.schemas.chat import (
 from app.core.dependencies import ChildAuth, ParentAuth, AnyAuth, DBClient
 from app.services.claude_client import ClaudeClient
 from app.services.moderation import ModerationService, InputModerationError
+from app.services.gamification import GamificationService
 from datetime import datetime, date
 import pytz
 
@@ -505,6 +506,15 @@ async def usage_heartbeat(request: HeartbeatRequest, auth: ChildAuth, db: DBClie
 
         current_minutes = result[0]['minutes_used']
         is_blocked = current_minutes >= daily_limit
+
+        # Streak: heartbeat = sinal de atividade. update_streak e' idempotente
+        # por dia (so muda se last_active != hoje), entao pode disparar a cada
+        # tick sem inflar nada. Falha nao mata o heartbeat - retorno
+        # original de blocked/minutos e' o que importa pra UI.
+        try:
+            await GamificationService(db).update_streak(auth.user_id)
+        except Exception as e:
+            logger.warning("update_streak falhou no heartbeat", error=str(e), child_id=auth.user_id)
 
         logger.info("Heartbeat registrado", child_id=auth.user_id,
                    minutes_today=current_minutes, limit=daily_limit, blocked=is_blocked)

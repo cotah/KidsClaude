@@ -264,22 +264,39 @@ class GamificationService:
             return first_attempt_count[0]['count'] >= count_needed
 
         elif rule_type == 'track_completed':
-            # Verifica se completou toda a trilha da idade
-            child_data = await self.db.execute_query("SELECT age FROM children WHERE id = $1", child_id)
-            age = child_data[0]['age']
-            age_band = '6-8' if age <= 8 else '9-12'
-
+            # LESSON_MASTER: todas as licoes regulares concluidas (exame final
+            # excluido). Antes filtrava por age_band, mas o seed/migrations
+            # 003+ trocou as bands para '6-8','9-10','11-12','12+' enquanto
+            # esse handler usava '9-12' - o que zerava total e tornava o
+            # badge inalcancavel pra 9+. Agora e' age-agnostico.
             total_lessons = await self.db.execute_query(
-                "SELECT COUNT(*) as count FROM lessons WHERE age_band = $1 AND is_active = true",
-                age_band
+                "SELECT COUNT(*) as count FROM lessons WHERE is_active = true AND is_final_exam = false"
             )
             completed_lessons = await self.db.execute_query("""
                 SELECT COUNT(*) as count FROM lesson_progress lp
                 JOIN lessons l ON lp.lesson_id = l.id
-                WHERE lp.child_id = $1 AND lp.status = 'completed' AND l.age_band = $2
-            """, child_id, age_band)
+                WHERE lp.child_id = $1 AND lp.status = 'completed'
+                  AND l.is_active = true AND l.is_final_exam = false
+            """, child_id)
 
-            return completed_lessons[0]['count'] >= total_lessons[0]['count']
+            return (
+                total_lessons[0]['count'] > 0
+                and completed_lessons[0]['count'] >= total_lessons[0]['count']
+            )
+
+        elif rule_type == 'different_tracks':
+            # CURIOUS_MIND: abriu licoes de pelo menos N stages diferentes.
+            # "Abriu" = tem row em lesson_progress (criada no /lessons/{id}/start).
+            # Conta DISTINCT l.stage, ignora exame final. Antes nao tinha
+            # handler e o badge ficava preso em "always false".
+            count_needed = unlock_rule.get('count', 3)
+            distinct_stages = await self.db.execute_query("""
+                SELECT COUNT(DISTINCT l.stage) as count
+                FROM lesson_progress lp
+                JOIN lessons l ON lp.lesson_id = l.id
+                WHERE lp.child_id = $1 AND l.is_final_exam = false
+            """, child_id)
+            return distinct_stages[0]['count'] >= count_needed
 
         elif rule_type == 'story_sessions':
             count_needed = unlock_rule.get('count', 5)

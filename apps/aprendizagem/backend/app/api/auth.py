@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.dependencies import ParentAuth, DBClient
 from app.core.security import hash_pin, verify_pin, create_child_jwt
 from app.db.client import supabase
+from app.services.gamification import GamificationService
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -308,6 +309,15 @@ async def child_login_direct(request: Request, payload: ChildLoginDirectRequest,
 
         child_token = create_child_jwt(child['id'], child['parent_id'])
 
+        # Streak: login conta como atividade do dia. Mantemos o trigger de
+        # /complete tambem - update_streak e' idempotente por dia (se last_active=hoje
+        # nao mexe). Falha nao bloqueia login.
+        new_streak = int(child.get('streak_days') or 0)
+        try:
+            new_streak = await GamificationService(db).update_streak(child['id'])
+        except Exception as e:
+            logger.warning("update_streak falhou no login direto", error=str(e), child_id=child['id'])
+
         logger.info(
             "Login direto crianca",
             child_id=child['id'],
@@ -324,7 +334,7 @@ async def child_login_direct(request: Request, payload: ChildLoginDirectRequest,
                 "avatar_id": child['avatar_id'],
                 "xp": int(child.get('xp') or 0),
                 "level": int(child.get('level') or 1),
-                "streak_days": int(child.get('streak_days') or 0),
+                "streak_days": new_streak,
                 "daily_limit_minutes": int(child.get('daily_limit_minutes') or 30),
                 "last_active_date": (
                     child['last_active_date'].isoformat()
@@ -397,6 +407,14 @@ async def child_login(request: Request, payload: ChildLoginRequest, auth: Parent
         # Cria JWT da criança
         child_token = create_child_jwt(child['id'], auth.user_id)
 
+        # Streak: login conta como atividade do dia. Idempotente por data.
+        # Falha nao bloqueia login.
+        new_streak = int(child.get('streak_days') or 0)
+        try:
+            new_streak = await GamificationService(db).update_streak(child['id'])
+        except Exception as e:
+            logger.warning("update_streak falhou no login crianca", error=str(e), child_id=child['id'])
+
         logger.info("Login criança", child_id=child['id'], parent_id=auth.user_id)
 
         return ChildLoginResponse(
@@ -409,7 +427,7 @@ async def child_login(request: Request, payload: ChildLoginRequest, auth: Parent
                 "avatar_id": child['avatar_id'],
                 "xp": int(child.get('xp') or 0),
                 "level": int(child.get('level') or 1),
-                "streak_days": int(child.get('streak_days') or 0),
+                "streak_days": new_streak,
                 "daily_limit_minutes": int(child.get('daily_limit_minutes') or 30),
                 "last_active_date": (
                     child['last_active_date'].isoformat()
