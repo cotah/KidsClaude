@@ -121,12 +121,12 @@
     "STREAK_7": { "name": "Full Week", "description": "7 days of learning in a row" },
     "CHALLENGE_ACE": { "name": "Challenge Ace", "description": "Solved 10 challenges on first try" },
     "STORYTELLER": { "name": "Storyteller", "description": "Created 5 complete stories in chat" },
-    "POLITE_TALKER": { "name": "Good Manners", "description": "Used magic words in 5 conversations" },
-    "SAFETY_FIRST": { "name": "Safety First", "description": "Completed the safety lesson" },
-    "PROMPT_MASTER": { "name": "Prompt Master", "description": "Used all templates in a lesson" },
+    "QUICK_LEARNER": { "name": "Quick Learner", "description": "Completed 5 lessons" },
+    "LESSON_MASTER": { "name": "Lesson Master", "description": "Completed the full track" },
+    "PROMPT_PRO": { "name": "Prompt Pro", "description": "Sent 20 chat messages" },
+    "STREAK_30": { "name": "30-Day Streak", "description": "30 days of learning in a row" },
     "LEVEL_5": { "name": "Level 5", "description": "Reached level 5" },
-    "LEVEL_10": { "name": "Legendary", "description": "Reached level 10" },
-    "EARLY_BIRD": { "name": "Early Bird", "description": "Learned before 9am" }
+    "LEVEL_10": { "name": "Legendary", "description": "Reached level 10" }
   },
   "final_exam_card": {
     "locked_message": "Complete all 4 stages first!"

@@ -121,12 +121,12 @@
     "STREAK_7": { "name": "Semana Inteira", "description": "7 dias seguidos aprendendo" },
     "CHALLENGE_ACE": { "name": "As dos Desafios", "description": "Acertou 10 desafios na primeira tentativa" },
     "STORYTELLER": { "name": "Contador de Historias", "description": "Criou 5 historias completas no chat" },
-    "POLITE_TALKER": { "name": "Boa Educacao", "description": "Usou palavras magicas em 5 conversas" },
-    "SAFETY_FIRST": { "name": "Seguranca em Primeiro", "description": "Concluiu a licao de seguranca" },
-    "PROMPT_MASTER": { "name": "Mestre dos Prompts", "description": "Usou todos os templates de uma licao" },
+    "QUICK_LEARNER": { "name": "Aprendiz Rápido", "description": "Completou 5 lições" },
+    "LESSON_MASTER": { "name": "Mestre das Lições", "description": "Completou toda a trilha" },
+    "PROMPT_PRO": { "name": "Pro dos Prompts", "description": "Enviou 20 mensagens no chat" },
+    "STREAK_30": { "name": "30 Dias Seguidos", "description": "30 dias seguidos aprendendo" },
     "LEVEL_5": { "name": "Nivel 5", "description": "Alcancou o nivel 5" },
-    "LEVEL_10": { "name": "Lendario", "description": "Alcancou o nivel 10" },
-    "EARLY_BIRD": { "name": "Madrugador", "description": "Aprendeu antes das 9h da manha" }
+    "LEVEL_10": { "name": "Lendario", "description": "Alcancou o nivel 10" }
   },
   "final_exam_card": {
     "locked_message": "Complete todas as 4 stages primeiro!"

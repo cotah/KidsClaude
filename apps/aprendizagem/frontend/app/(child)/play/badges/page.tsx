@@ -3,50 +3,63 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import type { Route } from 'next';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Mascot, MascotBubble } from '@/components/ui/mascot-bubble';
+import { apiClient } from '@/lib/api/client';
 import useAppStore from '@/lib/store/app-store';
 import { cn } from '@/lib/utils';
 
 // Catalogo das 12 badges seedadas no backend (migrations/002_seed_data.sql).
 // So' code + icon ficam aqui (icone nao traduz). name/description vem de
 // badges_page.<code>.{name,description} no JSON pra suportar EN/PT.
-// Quando o backend tiver endpoint /v1/badges, trocar por chamada e
-// remover esta lista.
+// Codes batem 1:1 com o seed - mudancas aqui exigem mudanca tambem em
+// badges_page no en/pt.json. Quando o backend tiver endpoint /v1/badges,
+// trocar por chamada e remover esta lista.
 const BADGE_CATALOG: Array<{ code: string; icon: string }> = [
   { code: 'FIRST_STEPS', icon: '👣' },
+  { code: 'QUICK_LEARNER', icon: '⚡' },
+  { code: 'LESSON_MASTER', icon: '🎓' },
   { code: 'CURIOUS_MIND', icon: '🔭' },
+  { code: 'PROMPT_PRO', icon: '🪄' },
   { code: 'STREAK_3', icon: '🔥' },
   { code: 'STREAK_7', icon: '📅' },
+  { code: 'STREAK_30', icon: '📆' },
   { code: 'CHALLENGE_ACE', icon: '🎯' },
   { code: 'STORYTELLER', icon: '📚' },
-  { code: 'POLITE_TALKER', icon: '🤝' },
-  { code: 'SAFETY_FIRST', icon: '🛡️' },
-  { code: 'PROMPT_MASTER', icon: '🪄' },
   { code: 'LEVEL_5', icon: '⭐' },
   { code: 'LEVEL_10', icon: '🌟' },
-  { code: 'EARLY_BIRD', icon: '🌅' },
 ];
 
 /**
- * Mural de conquistas. Mostra catalogo completo das 12 badges. A chamada
- * para dashboardApi.getDashboard foi removida porque ela exige token de
- * pai e era chamada em sessao de crianca, gerando 401 ruidoso. Quando o
- * backend tiver endpoint /v1/children/{id}/badges, plugar aqui.
+ * Mural de conquistas. Mostra catalogo completo das 12 badges com lock
+ * overlay nas nao-desbloqueadas. Le badges reais via
+ * GET /v1/children/{id}/badges (AnyAuth - crianca so ve as proprias).
  */
 export default function BadgesPage() {
   const router = useRouter();
   const t = useTranslations('badges_page');
-  const { currentChild: _currentChild } = useAppStore();
+  const { currentChild } = useAppStore();
 
-  // Sem dashboard call em modo crianca - todas aparecem como bloqueadas
-  // ate' termos endpoint child-aware.
-  const unlockedCodes = useMemo(() => new Set<string>(), []);
+  // Endpoint devolve envelope { badges: [{code, ...}] }. Constroi Set
+  // de codes pra lookup O(1) ao montar cada card do catalogo.
+  const { data: badgesData, isLoading } = useQuery({
+    queryKey: ['child-badges', currentChild?.id],
+    queryFn: () =>
+      apiClient.get<{ badges: Array<{ code: string }> }>(
+        `children/${currentChild!.id}/badges`
+      ),
+    enabled: !!currentChild?.id,
+  });
+
+  const unlockedCodes = useMemo(
+    () => new Set((badgesData?.badges ?? []).map((b) => b.code)),
+    [badgesData]
+  );
   const unlockedCount = unlockedCodes.size;
-  const isLoading = false;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4">
