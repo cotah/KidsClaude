@@ -11,7 +11,22 @@ import { Badge } from '@/components/ui/badge';
 import { examApi, lessonsApi } from '@/lib/api';
 import useAppStore from '@/lib/store/app-store';
 import { cn } from '@/lib/utils';
+import { TypingIndicator } from '@/components/chat/typing-indicator';
 import type { ExamSession, ExamMessageResponse, ExamSubmitResponse } from '@/types/api';
+
+/**
+ * Limite dinamico de chars no texto livre por faixa etaria. Mesma
+ * funcao do lesson chat (app/(child)/play/lesson/[id]/chat/page.tsx)
+ * e do backend (_max_message_length_for_age em api/chat.py). Os 3
+ * lugares precisam mover juntos.
+ */
+function freeTextMaxLength(age: number | undefined): number {
+  const a = age ?? 8;
+  if (a <= 8) return 200;
+  if (a <= 10) return 500;
+  if (a <= 12) return 1000;
+  return 2000;
+}
 
 /**
  * Página do exame final - conforme spec curriculum redesign seção 7.4
@@ -175,6 +190,7 @@ export default function ExamPage() {
             onSendMessage={handleSendMessage}
             onKeyDown={handleKeyDown}
             isSending={sendMessageMutation.isPending}
+            maxLength={freeTextMaxLength(currentChild.age)}
           />
         )}
       </main>
@@ -291,6 +307,7 @@ function ExamChat({
   onSendMessage,
   onKeyDown,
   isSending,
+  maxLength,
 }: {
   messages: Array<{ role: 'child' | 'assistant'; content: string }>;
   inputValue: string;
@@ -298,12 +315,14 @@ function ExamChat({
   onSendMessage: () => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   isSending: boolean;
+  maxLength: number;
 }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Chat area */}
+      {/* Chat area - min-h garante area util mesmo com poucas mensagens;
+          max-h aumentado (era 24rem) pra caber mais mensagens sem scroll. */}
       <KidCard className="bg-white/90 backdrop-blur-sm">
-        <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+        <div className="p-6 space-y-4 min-h-[28rem] max-h-[36rem] overflow-y-auto">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -326,9 +345,7 @@ function ExamChat({
           ))}
           {isSending && (
             <div className="flex justify-start">
-              <div className="bg-yellow-100 px-4 py-3 rounded-kid-lg border border-yellow-300">
-                <p className="text-kid-base text-gray-600">Claude está pensando...</p>
-              </div>
+              <TypingIndicator />
             </div>
           )}
         </div>
@@ -342,8 +359,8 @@ function ExamChat({
               value={inputValue}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Escreva sua resposta aqui... (máximo 300 caracteres)"
-              maxLength={300}
+              placeholder={`Escreva sua resposta aqui... (máximo ${maxLength} caracteres)`}
+              maxLength={maxLength}
               rows={3}
               className="flex-1 resize-none border border-gray-300 rounded-kid-md p-3 text-kid-base focus:outline-none focus:ring-2 focus:ring-purple-500"
               disabled={isSending}
@@ -359,7 +376,7 @@ function ExamChat({
             </Button>
           </div>
           <p className="text-kid-xs text-gray-500 mt-2">
-            {inputValue.length}/300 caracteres
+            {inputValue.length}/{maxLength} caracteres
           </p>
         </div>
       </KidCard>
