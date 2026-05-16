@@ -104,6 +104,7 @@ export const examApi = {
         session_id: 'mock-exam-session-' + Date.now(),
         started_at: new Date().toISOString(),
         lesson_id: 'lesson-final-exam',
+        opening_message: 'Hi! Welcome to the final project.',
       };
     }
     return apiClient.post('exam/start', {});
