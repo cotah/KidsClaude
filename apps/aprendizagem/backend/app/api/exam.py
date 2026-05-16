@@ -198,6 +198,34 @@ _EXAM_PROMPTS_BY_LOCALE: Dict[str, Dict[str, str]] = {
 }
 
 
+# --- BLOCO DE RITMO ---
+# Atena estava despejando todos os passos numa unica resposta (especialmente
+# no projeto 11-12 de 6 passos). Esse bloco e' anexado ao final de todos
+# os 8 prompts para forcar conducao passo-a-passo. Fica como bloco unico
+# em vez de embutido em cada um dos 8 templates - facilita iterar a regra
+# sem editar 8 vezes. {child_name} interpolado em runtime.
+
+_PACING_PT = """RITMO (regra mais importante - obedeça sempre):
+- UM passo por resposta. Nunca faça 2 perguntas ao mesmo tempo.
+- Espere {child_name} responder antes de seguir pro próximo passo.
+- Só avance pro próximo passo quando o atual tiver uma resposta clara.
+- Se a resposta de {child_name} for vaga ou incompleta, peça mais detalhes antes de avançar.
+- NÃO resuma nem liste todos os passos de uma vez. Só faça a pergunta do passo atual e espere."""
+
+_PACING_EN = """PACING (most important rule - always obey):
+- ONE step per response. Never ask 2 questions at once.
+- Wait for {child_name} to answer before moving to the next step.
+- Only move to the next step when the current one has a clear answer.
+- If {child_name}'s answer is vague or incomplete, ask for more detail before moving on.
+- Do NOT summarize or list all steps upfront. Just ask the current step's question and wait."""
+
+
+_PACING_BY_LOCALE: Dict[str, str] = {
+    "pt": _PACING_PT,
+    "en": _PACING_EN,
+}
+
+
 # --- MENSAGENS DE ABERTURA ---
 # Antes hardcoded no frontend; agora geradas no backend pra alinhar com
 # a faixa etaria + locale + nome da crianca. Placeholder {child_name}.
@@ -219,11 +247,18 @@ _EXAM_OPENINGS_BY_LOCALE: Dict[str, Dict[str, str]] = {
 
 
 def _select_exam_prompt(age: int, locale: str, child_name: str) -> str:
-    """System prompt do exame formatado pra (age, locale, child_name)."""
+    """System prompt do exame formatado pra (age, locale, child_name).
+
+    Anexa o bloco de RITMO/PACING do mesmo locale ao final, pra Claude
+    nao despejar todos os passos numa unica resposta. Ver _PACING_*.
+    """
     loc = _normalize_locale(locale)
     group = _select_age_group(age)
     template = _EXAM_PROMPTS_BY_LOCALE[loc][group]
-    return template.format(child_name=child_name)
+    pacing = _PACING_BY_LOCALE[loc]
+    body = template.format(child_name=child_name)
+    pacing_body = pacing.format(child_name=child_name)
+    return f"{body}\n\n{pacing_body}"
 
 
 def _select_exam_opening(age: int, locale: str, child_name: str) -> str:

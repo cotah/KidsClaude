@@ -307,10 +307,14 @@ function ExamIntro({
  */
 function ExamProgressBar({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
   const t = useTranslations('exam_page');
+  // Backend devolve current_step com cap em 6 - se a faixa for 5 passos
+  // (6-8 / 9-10), capear aqui pra nao mostrar "Passo 6 de 5" nem bolinhas
+  // a mais quando current_step extrapola o tamanho do projeto da idade.
+  const displayStep = Math.min(currentStep, totalSteps);
   return (
     <div className="flex items-center space-x-2">
       <span className="text-kid-sm text-gray-600 font-medium">
-        {t('progress_step', { step: currentStep, total: totalSteps })}
+        {t('progress_step', { step: displayStep, total: totalSteps })}
       </span>
       <div className="flex space-x-1">
         {Array.from({ length: totalSteps }).map((_, index) => (
@@ -318,9 +322,9 @@ function ExamProgressBar({ currentStep, totalSteps }: { currentStep: number; tot
             key={index}
             className={cn(
               'w-3 h-3 rounded-full transition-colors',
-              index < currentStep
+              index < displayStep
                 ? 'bg-purple-500'
-                : index === currentStep
+                : index === displayStep
                   ? 'bg-yellow-400'
                   : 'bg-gray-200'
             )}
