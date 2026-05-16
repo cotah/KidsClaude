@@ -28,6 +28,22 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _max_message_length_for_age(age: int) -> int:
+    """
+    Teto de chars do texto livre por faixa etaria. Mesmas cutoffs de
+    _select_age_group (claude_client.py) e getAgeGroup (frontend
+    lib/utils.ts) - se mudar uma, mude as outras.
+    Templates curados nao usam isso; so' texto livre.
+    """
+    if age <= 8:
+        return 200
+    if age <= 10:
+        return 500
+    if age <= 12:
+        return 1000
+    return 2000
+
+
 @router.post("/sessions", response_model=ChatSessionCreateResponse, status_code=201)
 async def create_chat_session(
     request: ChatSessionCreateRequest,
@@ -208,6 +224,19 @@ async def send_message(
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail={"error": {"code": "EMPTY_CONTENT", "message": "Mensagem vazia"}}
+                )
+            # Limite dinamico por idade. Schema permite ate 2000 (teto),
+            # mas regra de produto e' 200/500/1000/2000 segundo a faixa.
+            # Cap aplicado antes da moderacao - mensagem cortada nem passa
+            # por blocklist nem entra no DB.
+            max_len = _max_message_length_for_age(session['age'])
+            if len(content) > max_len:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": {
+                        "code": "CONTENT_TOO_LONG",
+                        "message": f"Mensagem excede {max_len} caracteres",
+                    }}
                 )
             message_content = content
             template_id_for_db = None

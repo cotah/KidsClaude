@@ -22,7 +22,18 @@ import { getAgeGroup } from '@/lib/utils';
 import { stripMarkdown } from '@/lib/utils/markdown';
 import type { ChatMessage, PromptTemplate, SendMessageRequest, SendMessageResponse } from '@/types/api';
 
-const FREE_TEXT_MAX_LENGTH = 200;
+/**
+ * Limite dinamico de chars do texto livre por faixa etaria. Mesmas
+ * cutoffs do backend (_max_message_length_for_age em api/chat.py) e do
+ * getAgeGroup (lib/utils.ts). Mudou aqui? Mude la tambem.
+ */
+function freeTextMaxLength(age: number | undefined): number {
+  const a = age ?? 8;
+  if (a <= 8) return 200;
+  if (a <= 10) return 500;
+  if (a <= 12) return 1000;
+  return 2000;
+}
 
 const MAX_STRIKES = 3;
 // Velocidade da animacao de "digitacao" da resposta da Claude (caracteres/tick).
@@ -55,6 +66,7 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const ageGroup = currentChild ? getAgeGroup(currentChild.age) : '6-8';
+  const freeTextMax = freeTextMaxLength(currentChild?.age);
 
   // Carrega licao para obter os prompt templates filtrados pela faixa.
   const { data: lesson, isLoading: loadingLesson } = useQuery({
@@ -344,10 +356,10 @@ export default function ChatPage() {
                 <input
                   type="text"
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value.slice(0, FREE_TEXT_MAX_LENGTH))}
+                  onChange={(e) => setInputText(e.target.value.slice(0, freeTextMax))}
                   onKeyDown={handleInputKeyDown}
                   placeholder={t('input_placeholder')}
-                  maxLength={FREE_TEXT_MAX_LENGTH}
+                  maxLength={freeTextMax}
                   disabled={pending || !sessionId}
                   className="flex-1 rounded-2xl border-2 border-grape-200 bg-white px-4 py-3 text-base focus:border-grape-400 focus:outline-none focus:ring-2 focus:ring-grape-200 disabled:bg-gray-100 disabled:text-gray-500"
                   autoFocus
@@ -366,12 +378,12 @@ export default function ChatPage() {
                 <span>{t('input_press_enter')}</span>
                 <span
                   className={
-                    inputText.length >= FREE_TEXT_MAX_LENGTH
+                    inputText.length >= freeTextMax
                       ? 'font-bold text-sunset-600'
                       : ''
                   }
                 >
-                  {t('input_counter', { current: inputText.length, max: FREE_TEXT_MAX_LENGTH })}
+                  {t('input_counter', { current: inputText.length, max: freeTextMax })}
                 </span>
               </div>
             </div>
