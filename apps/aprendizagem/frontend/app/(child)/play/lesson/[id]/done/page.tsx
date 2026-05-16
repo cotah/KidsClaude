@@ -42,8 +42,8 @@ export default function LessonDonePage() {
         console.log('[done] /complete response:', res);
         setCompletion(res);
         // Atualiza currentChild no zustand pra que XPProgress no header e
-        // ChildNavbar reflitam o novo XP/level imediatamente. Sem isso,
-        // a barra continua mostrando o XP antigo ate a crianca relogar.
+        // ChildNavbar reflitam o novo XP/level/streak imediatamente. Sem
+        // isso, a barra continua mostrando o XP antigo ate a crianca relogar.
         if (currentChild) {
           // Cast pra Child porque o tipo local de AppState.currentChild
           // omite alguns campos que existem no payload real (ex:
@@ -52,7 +52,29 @@ export default function LessonDonePage() {
             ...(currentChild as Child),
             xp: res.xp_total,
             level: res.level,
+            streak_days: res.streak_days,
           });
+
+          // Sincroniza o cache do navbar (['my-child', id]) com os novos
+          // valores ANTES de qualquer re-render. Sem isso, o useEffect
+          // defensivo do ChildNavbar (que compara store vs cache de
+          // GET /children) dispara com cache stale e reverte o store pros
+          // valores velhos - bug "header mostra 450 enquanto done mostra
+          // 1055". invalidateQueries forca refetch eventual pra alinhar
+          // os demais campos (last_active_date etc).
+          queryClient.setQueryData<Child[]>(['my-child', currentChild.id], (old) =>
+            old?.map((c) =>
+              c.id === currentChild.id
+                ? {
+                    ...c,
+                    xp: res.xp_total,
+                    level: res.level,
+                    streak_days: res.streak_days,
+                  }
+                : c
+            ) ?? old
+          );
+          queryClient.invalidateQueries({ queryKey: ['my-child'] });
         }
         // Invalida caches dependentes pra que stages, listas de licao da
         // stage, progresso e badges reflitam a conclusao sem refresh:

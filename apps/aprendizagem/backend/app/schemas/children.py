@@ -89,6 +89,11 @@ class LessonCompleteResponse(BaseModel):
     xp_earned: int = 0
     xp_total: int
     level: int
+    # Streak apos a conclusao (idempotente por dia). Frontend usa pra
+    # popular o cache do navbar imediatamente, sem esperar refetch de
+    # GET /children. Sem esse campo, o useEffect defensivo do ChildNavbar
+    # reverte o store pro streak velho do cache stale.
+    streak_days: int
     badges_unlocked: List[BadgeInfo]
     stage_unlocked: Optional[int] = None
 

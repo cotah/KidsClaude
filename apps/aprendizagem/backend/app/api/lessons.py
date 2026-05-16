@@ -393,13 +393,14 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient, http_re
             # Já concluída, retorna dados atuais sem conceder XP novamente.
             # xp_earned=0 sinaliza pro frontend que nao houve recompensa nova.
             current_child = await db.execute_query(
-                "SELECT xp, level FROM children WHERE id = $1",
+                "SELECT xp, level, streak_days FROM children WHERE id = $1",
                 auth.user_id
             )
             return LessonCompleteResponse(
                 xp_earned=0,
                 xp_total=current_child[0]['xp'],
                 level=current_child[0]['level'],
+                streak_days=current_child[0]['streak_days'],
                 badges_unlocked=[]
             )
 
@@ -449,8 +450,12 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient, http_re
         gamification = GamificationService(db)
         result = await gamification.award_xp(auth.user_id, xp_reward, 'lesson_completed')
 
-        # Atualiza streak no fuso do usuario
-        await gamification.update_streak(auth.user_id, today=user_today(http_request))
+        # Atualiza streak no fuso do usuario e captura novo valor pra
+        # devolver no response - frontend precisa sincronizar o cache
+        # do navbar sem esperar o refetch de GET /children.
+        new_streak = await gamification.update_streak(
+            auth.user_id, today=user_today(http_request)
+        )
 
         logger.info("Lição concluída", child_id=auth.user_id, lesson_id=lesson_id, xp=xp_reward, stage_unlocked=stage_unlocked)
 
@@ -469,6 +474,7 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient, http_re
             xp_earned=xp_reward,
             xp_total=result['xp_total'],
             level=result['level'],
+            streak_days=new_streak,
             badges_unlocked=badges_unlocked,
             stage_unlocked=stage_unlocked
         )

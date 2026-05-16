@@ -175,6 +175,9 @@ export interface LessonCompletionResponse {
   xp_earned: number;
   xp_total: number;
   level: number;
+  // Streak apos a conclusao (idempotente por dia). Done page usa pra
+  // popular cache do navbar sem esperar refetch de GET /children.
+  streak_days: number;
   badges_unlocked: Badge[];
   stage_unlocked?: number;
 }
