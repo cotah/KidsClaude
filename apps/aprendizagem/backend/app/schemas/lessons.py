@@ -118,6 +118,10 @@ class ExamStartResponse(BaseModel):
     session_id: str
     started_at: datetime
     lesson_id: str
+    # Primeira fala da Atena, adaptada por faixa etaria + locale. Antes
+    # era hardcoded no frontend; mover pra ca permite variar tom e
+    # idioma sem deploy do frontend.
+    opening_message: str
 
 
 class ExamMessageRequest(BaseModel):

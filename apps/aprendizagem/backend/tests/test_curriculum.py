@@ -167,18 +167,36 @@ class TestCurriculumRedesign:
         assert "age BETWEEN 6 AND 16" in content, "Limite de idade deve ser expandido para 16"
 
     def test_exam_system_prompt_exists(self):
-        """Testa se o system prompt do exame está implementado."""
-        from app.api.exam import send_exam_message
+        """Testa que os prompts do exame estao implementados (4 projetos x 2 idiomas).
 
-        # Verifica se a função existe (importação bem-sucedida indica implementação)
+        Antes inspecionava inspect.getsource(send_exam_message) procurando
+        strings hardcoded ("Atena Mentor", "5 passos", "ficha-resumo"). Apos
+        o rework por idade/locale, os prompts viraram constantes module-level
+        e a deteccao virou o marcador explicito PROJETO_COMPLETO. Atualizado.
+        """
+        from app.api.exam import (
+            send_exam_message,
+            _EXAM_PROMPTS_BY_LOCALE,
+            _EXAM_OPENINGS_BY_LOCALE,
+            _COMPLETION_MARKER,
+            _select_exam_prompt,
+        )
+
         assert callable(send_exam_message)
 
-        # O system prompt está hardcoded na função - verificamos se contém elementos-chave
-        import inspect
-        source = inspect.getsource(send_exam_message)
-        assert "Atena Mentor" in source
-        assert "5 passos" in source
-        assert "ficha-resumo" in source
+        # 2 locales x 4 faixas etarias em ambos os dicts
+        assert set(_EXAM_PROMPTS_BY_LOCALE.keys()) == {"pt", "en"}
+        for loc in ("pt", "en"):
+            assert set(_EXAM_PROMPTS_BY_LOCALE[loc].keys()) == {"6-8", "9-10", "11-12", "12+"}
+            assert set(_EXAM_OPENINGS_BY_LOCALE[loc].keys()) == {"6-8", "9-10", "11-12", "12+"}
+
+        # Cada prompt aceita {child_name} via .format e contem o marker
+        rendered = _select_exam_prompt(11, "pt", "Miguel")
+        assert "Miguel" in rendered
+        assert _COMPLETION_MARKER in rendered
+
+        # Tier 12+ preserva a persona "Atena Mentor"
+        assert "Atena Mentor" in _EXAM_PROMPTS_BY_LOCALE["pt"]["12+"]
 
     def test_capstone_badge_added(self):
         """Testa se o badge CAPSTONE_BUILDER foi adicionado."""

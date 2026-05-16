@@ -57,11 +57,12 @@ export default function ExamPage() {
     mutationFn: () => examApi.startExam(),
     onSuccess: (session) => {
       setExamSession(session);
-      // Primeira mensagem do Claude
+      // Mensagem de abertura vem do backend agora, adaptada por idade
+      // e locale e com o nome real da crianca. Antes era hardcoded aqui.
       setMessages([
         {
           role: 'assistant',
-          content: 'Oi! Eu sou o Claude Mentor, e estou aqui para te ajudar a planejar o app dos seus sonhos. Vamos passar por 5 etapas juntos. Primeiro, me conta: que problema do seu dia a dia você gostaria de resolver com um app?',
+          content: session.opening_message,
         }
       ]);
     },
@@ -339,7 +340,11 @@ function ExamChat({
                     : 'bg-yellow-100 text-gray-800 border border-yellow-300'
                 )}
               >
-                <p className="text-kid-base">{message.content}</p>
+                {message.role === 'assistant' ? (
+                  <AssistantMessageContent content={message.content} />
+                ) : (
+                  <p className="text-kid-base">{message.content}</p>
+                )}
               </div>
             </div>
           ))}
@@ -511,6 +516,58 @@ function ExamCelebration({ result }: { result: ExamSubmitResponse }) {
           </div>
         </KidCard>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Renderiza a mensagem do assistente destacando conteudo entre [[ ]]
+ * como um bloco mono com fundo diferente - sinaliza pra crianca que
+ * aquela e' a criacao final dela (prompt, ficha, system prompt etc).
+ *
+ * Backend instrui a Atena a usar [[ ]] ao volta da criacao no fim de
+ * cada projeto. Aqui parseamos o texto em segmentos plain/highlight
+ * e renderizamos cada um com seu estilo proprio.
+ */
+function AssistantMessageContent({ content }: { content: string }) {
+  // Split conservador: aceita multiplos blocos [[...]] na mesma mensagem.
+  // Regex nao-greedy + flag s pra cobrir blocos multi-linha.
+  const segments: Array<{ kind: 'text' | 'highlight'; value: string }> = [];
+  const re = /\[\[([\s\S]+?)\]\]/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ kind: 'text', value: content.slice(lastIndex, match.index) });
+    }
+    segments.push({ kind: 'highlight', value: match[1] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < content.length) {
+    segments.push({ kind: 'text', value: content.slice(lastIndex) });
+  }
+
+  // Sem blocos: renderiza igual ao antes.
+  if (segments.every((s) => s.kind === 'text')) {
+    return <p className="text-kid-base">{content}</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {segments.map((seg, i) =>
+        seg.kind === 'text' ? (
+          seg.value.trim() ? (
+            <p key={i} className="text-kid-base whitespace-pre-wrap">{seg.value}</p>
+          ) : null
+        ) : (
+          <pre
+            key={i}
+            className="bg-purple-900 text-yellow-100 font-mono text-sm rounded-kid-md p-3 whitespace-pre-wrap break-words"
+          >
+            {seg.value.trim()}
+          </pre>
+        )
+      )}
     </div>
   );
 }

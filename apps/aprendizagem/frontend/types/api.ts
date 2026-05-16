@@ -275,6 +275,9 @@ export interface ExamSession {
   session_id: string;
   started_at: string;
   lesson_id: string;
+  // Primeira fala da Atena vem do backend agora (adaptada por idade
+  // + locale). Substitui o hardcoded que estava em exam/page.tsx.
+  opening_message: string;
 }
 
 export interface ExamMessageRequest {
