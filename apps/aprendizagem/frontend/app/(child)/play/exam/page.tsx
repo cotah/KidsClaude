@@ -3,14 +3,15 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { ArrowLeft, CrownIcon, SendIcon, CheckCircleIcon } from 'lucide-react';
+import { ArrowLeft, CrownIcon, SendIcon, CheckCircleIcon, ExternalLink, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KidCard } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { examApi, lessonsApi } from '@/lib/api';
 import useAppStore from '@/lib/store/app-store';
-import { cn } from '@/lib/utils';
+import { cn, getAgeGroup } from '@/lib/utils';
 import { TypingIndicator } from '@/components/chat/typing-indicator';
 import type { ExamSession, ExamMessageResponse, ExamSubmitResponse } from '@/types/api';
 
@@ -29,9 +30,38 @@ function freeTextMaxLength(age: number | undefined): number {
 }
 
 /**
+ * Quantidade de passos do projeto por faixa. 6-8 e 9-10 sao projetos
+ * de 5 passos (assistente de historias, Pokedex); 11-12 e 12+ tem 6
+ * passos (site, system prompt). Backend caps current_step em 6.
+ */
+function totalSteps(age: number | undefined): number {
+  const a = age ?? 8;
+  return a <= 10 ? 5 : 6;
+}
+
+/**
+ * Extrai o conteudo do ULTIMO bloco [[ ... ]] de mensagens do assistente.
+ * Backend instrui a Atena a colocar o entregavel final (prompt/ficha/
+ * system prompt) entre [[ ]] junto com PROJETO_COMPLETO. Aqui pegamos
+ * isso pra mostrar destacado na tela de conclusao e no download.
+ */
+function extractFinalProject(messages: Array<{ role: 'child' | 'assistant'; content: string }>): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== 'assistant') continue;
+    const matches = [...msg.content.matchAll(/\[\[([\s\S]+?)\]\]/g)];
+    if (matches.length > 0) {
+      return matches[matches.length - 1][1].trim();
+    }
+  }
+  return null;
+}
+
+/**
  * Página do exame final - conforme spec curriculum redesign seção 7.4
  */
 export default function ExamPage() {
+  const t = useTranslations('exam_page');
   const router = useRouter();
   const { currentChild } = useAppStore();
   const [examSession, setExamSession] = React.useState<ExamSession | null>(null);
@@ -129,11 +159,9 @@ export default function ExamPage() {
       <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="text-6xl">🤔</div>
-          <p className="text-kid-lg text-gray-600">
-            Ops! Você precisa escolher seu perfil primeiro.
-          </p>
+          <p className="text-kid-lg text-gray-600">{t('need_profile')}</p>
           <Button variant="sunny" size="kid-lg" asChild>
-            <Link href="/select">Escolher Perfil</Link>
+            <Link href="/select">{t('pick_profile')}</Link>
           </Button>
         </div>
       </div>
@@ -158,12 +186,12 @@ export default function ExamPage() {
             >
               <Link href="/play" className="flex items-center space-x-2">
                 <ArrowLeft className="w-4 h-4" />
-                <span>Voltar ao Hub</span>
+                <span>{t('back_to_hub')}</span>
               </Link>
             </Button>
 
             {examSession && (
-              <ExamProgressBar currentStep={currentStep} />
+              <ExamProgressBar currentStep={currentStep} totalSteps={totalSteps(currentChild.age)} />
             )}
           </div>
         </div>
@@ -180,6 +208,8 @@ export default function ExamPage() {
         ) : isComplete && !isSubmitting ? (
           <ExamCompletion
             messages={messages}
+            childAge={currentChild.age}
+            childName={currentChild.name}
             onSubmitExam={handleSubmitExam}
             isSubmitting={submitExamMutation.isPending}
           />
@@ -213,6 +243,8 @@ function ExamIntro({
   onStartExam: () => void;
   isStarting: boolean;
 }) {
+  const t = useTranslations('exam_page');
+
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto">
@@ -233,10 +265,10 @@ function ExamIntro({
           {/* Título */}
           <div className="space-y-2">
             <h1 className="text-kid-2xl font-bold bg-gradient-to-r from-purple-600 to-yellow-600 bg-clip-text text-transparent">
-              {examLesson?.title || 'Projeto Final'}
+              {examLesson?.title || t('fallback_title')}
             </h1>
             <p className="text-kid-lg text-purple-700 font-medium">
-              Atena vai te ajudar a planejar seu app em 5 passos
+              {t('intro_subtitle')}
             </p>
           </div>
 
@@ -262,7 +294,7 @@ function ExamIntro({
               'w-full max-w-xs'
             )}
           >
-            {isStarting ? 'Iniciando...' : 'Estou pronto, vamos começar!'}
+            {isStarting ? t('intro_starting') : t('intro_start')}
           </Button>
         </div>
       </KidCard>
@@ -273,14 +305,15 @@ function ExamIntro({
 /**
  * Barra de progresso do exame (5 passos)
  */
-function ExamProgressBar({ currentStep }: { currentStep: number }) {
+function ExamProgressBar({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+  const t = useTranslations('exam_page');
   return (
     <div className="flex items-center space-x-2">
       <span className="text-kid-sm text-gray-600 font-medium">
-        Passo {currentStep} de 5
+        {t('progress_step', { step: currentStep, total: totalSteps })}
       </span>
       <div className="flex space-x-1">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: totalSteps }).map((_, index) => (
           <div
             key={index}
             className={cn(
@@ -318,6 +351,7 @@ function ExamChat({
   isSending: boolean;
   maxLength: number;
 }) {
+  const t = useTranslations('exam_page');
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Chat area - min-h garante area util mesmo com poucas mensagens;
@@ -364,7 +398,7 @@ function ExamChat({
               value={inputValue}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={`Escreva sua resposta aqui... (máximo ${maxLength} caracteres)`}
+              placeholder={t('input_placeholder', { max: maxLength })}
               maxLength={maxLength}
               rows={3}
               className="flex-1 resize-none border border-gray-300 rounded-kid-md p-3 text-kid-base focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -381,7 +415,7 @@ function ExamChat({
             </Button>
           </div>
           <p className="text-kid-xs text-gray-500 mt-2">
-            {inputValue.length}/{maxLength} caracteres
+            {t('input_counter', { current: inputValue.length, max: maxLength })}
           </p>
         </div>
       </KidCard>
@@ -390,60 +424,154 @@ function ExamChat({
 }
 
 /**
- * Tela de conclusão do exame antes do submit
+ * Tela de conclusao: mostra o entregavel final (entre [[ ]]) destacado,
+ * sugere o que fazer com ele (varia por idade), botao de download e
+ * finalmente o submit que dispara XP + badge.
  */
 function ExamCompletion({
   messages,
+  childAge,
+  childName,
   onSubmitExam,
   isSubmitting,
 }: {
   messages: Array<{ role: 'child' | 'assistant'; content: string }>;
+  childAge: number;
+  childName: string;
   onSubmitExam: () => void;
   isSubmitting: boolean;
 }) {
-  // O último message do assistant deve conter o resumo final
-  const finalSummary = messages[messages.length - 1]?.content || '';
+  const t = useTranslations('exam_page');
+  const project = extractFinalProject(messages);
+  const ageGroup = getAgeGroup(childAge);
+
+  // Download .txt do projeto. Sem libs: Blob + URL.createObjectURL.
+  // Filename traduzido (meu-projeto-Miguel.txt / my-project-Miguel.txt).
+  const handleDownload = () => {
+    if (!project) return;
+    const filename = t('project_filename', { name: childName }).replace(/\s+/g, '-');
+    const blob = new Blob([project], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Mapa de "o que fazer agora?" por faixa. Cada entrada tem o texto
+  // explicativo + 1 ou 2 botoes (links externos abrem nova aba).
+  const whatsNext: Record<string, { text: string; buttons: Array<{ label: string; href: string; external: boolean }> }> = {
+    '6-8': {
+      text: t('whats_next_6_8'),
+      buttons: [{ label: t('open_atena'), href: '/play', external: false }],
+    },
+    '9-10': {
+      text: t('whats_next_9_10'),
+      buttons: [{ label: t('open_claude_ai'), href: 'https://claude.ai', external: true }],
+    },
+    '11-12': {
+      text: t('whats_next_11_12'),
+      buttons: [
+        { label: t('open_codepen'), href: 'https://codepen.io/pen', external: true },
+        { label: t('open_claude_ai_test'), href: 'https://claude.ai', external: true },
+      ],
+    },
+    '12+': {
+      text: t('whats_next_12_plus'),
+      buttons: [{ label: t('open_claude_ai_test'), href: 'https://claude.ai', external: true }],
+    },
+  };
+
+  const next = whatsNext[ageGroup];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <KidCard className="bg-gradient-to-br from-green-100 to-mint-200 border-2 border-green-300">
-        <div className="p-8 text-center space-y-6">
-          <CheckCircleIcon className="w-16 h-16 text-green-600 mx-auto" />
-
-          <div className="space-y-2">
+        <div className="p-8 space-y-6">
+          {/* Header centralizado */}
+          <div className="text-center space-y-3">
+            <CheckCircleIcon className="w-16 h-16 text-green-600 mx-auto" />
             <h2 className="text-kid-xl font-bold text-green-800">
-              Parabéns! Você completou os 5 passos!
+              {t('completion_title')}
             </h2>
             <p className="text-kid-base text-green-700">
-              Aqui está o resumo do seu projeto:
+              {project ? t('completion_your_project') : t('completion_no_project')}
             </p>
           </div>
 
-          {/* Ficha-resumo do projeto */}
-          <div className="bg-white/80 rounded-kid-lg p-6 text-left">
-            <div className="prose prose-sm max-w-none text-gray-800">
-              {finalSummary.split('\n').map((paragraph, index) => (
-                <p key={index} className="text-kid-sm mb-2">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
-          </div>
+          {/* Bloco do projeto extraido dos [[ ]] - mesma vibe purple/
+              yellow mono que usamos no chat pra destacar entregaveis. */}
+          {project && (
+            <pre className="bg-purple-900 text-yellow-100 font-mono text-sm rounded-kid-md p-4 whitespace-pre-wrap break-words shadow-inner">
+              {project}
+            </pre>
+          )}
 
-          <Button
-            onClick={onSubmitExam}
-            disabled={isSubmitting}
-            variant="default"
-            size="kid-lg"
-            className={cn(
-              'bg-gradient-to-r from-green-500 to-mint-500',
-              'hover:from-green-600 hover:to-mint-600',
-              'text-white shadow-lg font-bold',
-              'w-full max-w-xs'
+          {/* O que fazer agora? - varia por idade. */}
+          {next && (
+            <div className="bg-white/80 rounded-kid-lg p-5 space-y-3">
+              <h3 className="text-kid-base font-bold text-purple-800">
+                {t('whats_next')}
+              </h3>
+              <p className="text-kid-sm text-gray-700">{next.text}</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {next.buttons.map((b) =>
+                  b.external ? (
+                    <a
+                      key={b.label}
+                      href={b.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-kid-md bg-purple-500 hover:bg-purple-600 text-white font-bold px-4 py-2 text-kid-sm transition-colors"
+                    >
+                      {b.label}
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  ) : (
+                    <Link
+                      key={b.label}
+                      href={b.href as any}
+                      className="inline-flex items-center justify-center gap-2 rounded-kid-md bg-purple-500 hover:bg-purple-600 text-white font-bold px-4 py-2 text-kid-sm transition-colors"
+                    >
+                      {b.label}
+                    </Link>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Botoes finais: download + submit */}
+          <div className="flex flex-col items-center gap-3 pt-2">
+            {project && (
+              <Button
+                onClick={handleDownload}
+                variant="outline"
+                size="kid-default"
+                className="border-purple-400 text-purple-700 hover:bg-purple-50"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {t('download_project')}
+              </Button>
             )}
-          >
-            {isSubmitting ? 'Enviando...' : 'Concluir e Enviar Projeto'}
-          </Button>
+            <Button
+              onClick={onSubmitExam}
+              disabled={isSubmitting}
+              variant="default"
+              size="kid-lg"
+              className={cn(
+                'bg-gradient-to-r from-green-500 to-mint-500',
+                'hover:from-green-600 hover:to-mint-600',
+                'text-white shadow-lg font-bold',
+                'w-full max-w-xs'
+              )}
+            >
+              {isSubmitting ? t('completion_finalizing') : t('completion_finalize')}
+            </Button>
+          </div>
         </div>
       </KidCard>
     </div>
@@ -454,6 +582,7 @@ function ExamCompletion({
  * Tela de celebração final com badge e XP
  */
 function ExamCelebration({ result }: { result: ExamSubmitResponse }) {
+  const t = useTranslations('exam_page');
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-100 to-purple-200 flex items-center justify-center">
       <div className="max-w-2xl mx-auto p-6">
@@ -464,10 +593,10 @@ function ExamCelebration({ result }: { result: ExamSubmitResponse }) {
 
             <div className="space-y-2">
               <h1 className="text-kid-2xl font-bold bg-gradient-to-r from-purple-600 to-yellow-600 bg-clip-text text-transparent">
-                INCRÍVEL! VOCÊ CONSEGUIU!
+                {t('celebration_title')}
               </h1>
               <p className="text-kid-lg text-purple-700">
-                Você completou todo o curso e criou um projeto incrível!
+                {t('celebration_subtitle')}
               </p>
             </div>
 
@@ -476,7 +605,7 @@ function ExamCelebration({ result }: { result: ExamSubmitResponse }) {
               <div className="text-center space-y-2">
                 <div className="text-4xl">⭐</div>
                 <p className="text-kid-lg font-bold text-gray-800">
-                  +{result.xp_earned} XP
+                  {t('celebration_xp', { xp: result.xp_earned })}
                 </p>
               </div>
 
@@ -484,7 +613,7 @@ function ExamCelebration({ result }: { result: ExamSubmitResponse }) {
                 <div className="text-center space-y-2">
                   <div className="text-4xl">🏆</div>
                   <p className="text-kid-base font-bold text-gray-800">
-                    Nova conquista desbloqueada:
+                    {t('celebration_new_badge')}
                   </p>
                   <Badge variant="default" className="bg-gradient-to-r from-purple-500 to-yellow-500 text-white">
                     {result.badges_unlocked[0]} {/* CAPSTONE_BUILDER */}
@@ -505,12 +634,12 @@ function ExamCelebration({ result }: { result: ExamSubmitResponse }) {
                 )}
               >
                 <Link href="/play">
-                  Ver Minhas Conquistas
+                  {t('celebration_see_badges')}
                 </Link>
               </Button>
 
               <p className="text-kid-sm text-gray-600">
-                Você agora é oficialmente um Construtor Capstone! 👑
+                {t('celebration_footer')}
               </p>
             </div>
           </div>

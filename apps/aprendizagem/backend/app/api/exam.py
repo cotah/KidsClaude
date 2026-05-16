@@ -38,6 +38,17 @@ router = APIRouter()
 # Strippado da resposta antes de mandar pro frontend.
 _COMPLETION_MARKER = "PROJETO_COMPLETO"
 
+# Regex pra detectar o bloco entregavel [[ ... ]] na resposta. Cada projeto
+# (historia, ficha do Pokemon, prompt do site, system prompt) termina com
+# o conteudo final entre [[ ]] - se nao tem brackets, projeto nao esta
+# pronto de verdade mesmo que o marker apareca.
+_BRACKETS_RE = re.compile(r"\[\[([\s\S]+?)\]\]")
+
+# Limite de mensagens por sessao do exame. Lessons usa 30; o exame tem 5-6
+# passos com follow-ups e revisao tecnica (no tier 12+), entao 50 da' folga
+# sem virar conversa infinita.
+_EXAM_MESSAGE_LIMIT = 50
+
 
 # --- SYSTEM PROMPTS DO EXAME ---
 # 4 projetos x 2 idiomas. Placeholder {child_name} preenchido em
@@ -398,10 +409,13 @@ async def send_exam_message(
             WHERE session_id = $1
         """, session_id)
 
-        if message_count[0]['count'] >= 30:
+        if message_count[0]['count'] >= _EXAM_MESSAGE_LIMIT:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={"error": {"code": "MESSAGE_LIMIT", "message": "Limite de 30 mensagens por sessão atingido"}}
+                detail={"error": {
+                    "code": "MESSAGE_LIMIT",
+                    "message": f"Limite de {_EXAM_MESSAGE_LIMIT} mensagens por sessão atingido",
+                }}
             )
 
         # Salva mensagem da criança
@@ -441,12 +455,35 @@ async def send_exam_message(
 
         assistant_content = response.content[0].text if response.content else ""
 
-        # Completacao explicita via marcador (era heuristica de substring frágil).
-        is_complete = _COMPLETION_MARKER in assistant_content
+        # Rubric: marcador precisa vir ACOMPANHADO do entregavel entre [[ ]]
+        # senao nao conta como completo. Cobre o caso da Atena anunciar fim
+        # do projeto sem realmente escrever o prompt/ficha/system prompt
+        # final - sintoma comum quando o modelo "alucina conclusao" sem
+        # cumprir o passo de entrega.
+        marker_present = _COMPLETION_MARKER in assistant_content
+        has_brackets = bool(_BRACKETS_RE.search(assistant_content))
+        is_complete = marker_present and has_brackets
 
         # Remove o marcador antes de exibir + salvar - crianca nao precisa
         # ver "PROJETO_COMPLETO" no balao da Atena.
         display_content = _strip_completion_marker(assistant_content)
+
+        # Marker sem entregavel: nudge na voz da propria Atena pra ela
+        # voltar e escrever o projeto entre [[ ]] na proxima resposta.
+        # A propria mensagem fica visivel pra crianca pra que ela peca
+        # a Atena pra finalizar direito.
+        if marker_present and not has_brackets:
+            normalized_locale = _normalize_locale(locale)
+            if normalized_locale == "pt":
+                nudge = " (espera, ainda preciso escrever o projeto entre [[ ]] - me peça pra finalizar!)"
+            else:
+                nudge = " (hold on — I still need to write the project between [[ ]]. Ask me to finalize!)"
+            display_content = display_content + nudge
+            logger.warning(
+                "PROJETO_COMPLETO sem entregavel [[ ]] - bloqueando completion",
+                session_id=session_id,
+                age=session['age'],
+            )
 
         # Salva resposta do assistente (sem o marker)
         message_result = await db.execute_query("""
