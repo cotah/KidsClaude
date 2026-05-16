@@ -116,6 +116,13 @@ async function forward(req: NextRequest, pathSegments: string[]) {
   const token = await pickToken(req, pathSegments);
   if (token) headers.set('authorization', `Bearer ${token}`);
 
+  // Propaga locale do cookie pro backend via Accept-Language padrao HTTP.
+  // Backend usa pra escolher idioma das respostas do Claude no chat.
+  // Default 'en' mirrors i18n/request.ts (decisao de produto).
+  const store = await cookies();
+  const locale = store.get('locale')?.value === 'pt' ? 'pt' : 'en';
+  headers.set('accept-language', locale);
+
   // Body so para metodos que aceitam payload.
   const init: RequestInit = { method: req.method, headers };
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {

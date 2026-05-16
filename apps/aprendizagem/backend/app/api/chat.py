@@ -7,7 +7,7 @@ import re
 import json
 import structlog
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, Request, status, Query
 
 from app.schemas.chat import (
     ChatSessionCreateRequest, ChatSessionCreateResponse,
@@ -134,7 +134,8 @@ async def send_message(
     session_id: str,
     request: MessageSendRequest,
     auth: ChildAuth,
-    db: DBClient
+    db: DBClient,
+    http_request: Request,
 ):
     """
     Envia mensagem na sessão via prompt template.
@@ -144,7 +145,7 @@ async def send_message(
         # Verifica se sessão pertence à criança
         session_data = await db.execute_query("""
             SELECT s.id, s.child_id, s.lesson_id, s.safety_status, s.message_count,
-                   l.title, l.description, l.claude_model, c.age
+                   l.title, l.description, l.claude_model, l.stage, c.age
             FROM chat_sessions s
             JOIN lessons l ON s.lesson_id = l.id
             JOIN children c ON s.child_id = c.id
@@ -240,11 +241,35 @@ async def send_message(
                 detail={"error": {"code": "INPUT_BLOCKED", "message": e.reason}}
             )
 
+        # Carrega historico ANTES de inserir a mensagem atual - assim
+        # conversation_history vai sem o turn corrente (chat_with_child
+        # appenda ele como ultimo "user"). So' mensagens 'passed' entram
+        # no historico - bloqueadas nao devem confundir o contexto do
+        # modelo (e nao deveriam ser "lembradas" como conversa real).
+        history_rows = await db.execute_query("""
+            SELECT role, content
+            FROM chat_messages
+            WHERE session_id = $1
+              AND moderation_status = 'passed'
+              AND role IN ('child', 'assistant')
+            ORDER BY created_at ASC
+        """, session_id)
+        conversation_history = [
+            {
+                "role": "user" if row["role"] == "child" else "assistant",
+                "content": row["content"],
+            }
+            for row in history_rows
+        ]
+
         # Registra mensagem da criança (template_id_for_db = None pra texto livre)
         await db.execute_non_query("""
             INSERT INTO chat_messages (session_id, role, content, template_id, moderation_status)
             VALUES ($1, 'child', $2, $3, 'passed')
         """, session_id, message_content, template_id_for_db)
+
+        # Locale do BFF (Accept-Language). Fallback 'en' bate com produto.
+        locale_header = http_request.headers.get("accept-language", "en")
 
         # Chama Claude
         claude = ClaudeClient()
@@ -254,7 +279,10 @@ async def send_message(
                 lesson_title=session['title'],
                 lesson_summary=session['description'],
                 child_age=session['age'],
-                claude_model=session['claude_model']
+                stage_number=session['stage'],
+                claude_model=session['claude_model'],
+                conversation_history=conversation_history,
+                locale=locale_header,
             )
         except Exception as e:
             logger.error("Erro na chamada Claude", error=str(e))
