@@ -145,7 +145,8 @@ async def send_message(
         # Verifica se sessão pertence à criança
         session_data = await db.execute_query("""
             SELECT s.id, s.child_id, s.lesson_id, s.safety_status, s.message_count,
-                   l.title, l.description, l.claude_model, l.stage, c.age
+                   l.title, l.description, l.claude_model, l.stage,
+                   c.age, c.name AS child_name
             FROM chat_sessions s
             JOIN lessons l ON s.lesson_id = l.id
             JOIN children c ON s.child_id = c.id
@@ -279,6 +280,7 @@ async def send_message(
                 lesson_title=session['title'],
                 lesson_summary=session['description'],
                 child_age=session['age'],
+                child_name=session['child_name'],
                 stage_number=session['stage'],
                 claude_model=session['claude_model'],
                 conversation_history=conversation_history,
