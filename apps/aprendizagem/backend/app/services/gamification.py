@@ -116,13 +116,18 @@ class GamificationService:
             logger.error("Erro ao conceder XP", error=str(e), child_id=child_id)
             raise
 
-    async def update_streak(self, child_id: str) -> int:
+    async def update_streak(self, child_id: str, today: Optional[date] = None) -> int:
         """
         Atualiza streak diário da criança.
         Retorna novo valor do streak.
+
+        `today` deve vir do caller usando o fuso do usuario (X-Timezone via
+        BFF). Quando None (chamada legada/test), cai no self.timezone -
+        que e' settings.timezone (America/Sao_Paulo no MVP).
         """
         try:
-            today = datetime.now(self.timezone).date()
+            if today is None:
+                today = datetime.now(self.timezone).date()
 
             # Busca dados atuais
             current_data = await self.db.execute_query(

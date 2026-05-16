@@ -17,6 +17,7 @@ from app.schemas.chat import (
     HeartbeatRequest, HeartbeatResponse
 )
 from app.core.dependencies import ChildAuth, ParentAuth, AnyAuth, DBClient
+from app.core.timezone import user_today
 from app.services.claude_client import ClaudeClient
 from app.services.moderation import ModerationService, InputModerationError
 from app.services.gamification import GamificationService
@@ -472,15 +473,20 @@ async def list_child_sessions(
 
 
 @router.post("/usage/heartbeat", response_model=HeartbeatResponse)
-async def usage_heartbeat(request: HeartbeatRequest, auth: ChildAuth, db: DBClient):
+async def usage_heartbeat(
+    request: HeartbeatRequest,
+    auth: ChildAuth,
+    db: DBClient,
+    http_request: Request,
+):
     """
     Registra tempo de uso ativo da criança.
     Verifica limite diário e bloqueia se necessário.
     """
     try:
-        # Data atual no timezone configurado
-        timezone = pytz.timezone("America/Sao_Paulo")
-        today = datetime.now(timezone).date()
+        # "Hoje" no fuso do usuario - mantem 1 row/dia no daily_usage
+        # consistente com a percepcao da crianca/pai (e nao com SP ou UTC).
+        today = user_today(http_request)
 
         # Busca limite diário da criança
         child_data = await db.execute_query(
@@ -512,7 +518,7 @@ async def usage_heartbeat(request: HeartbeatRequest, auth: ChildAuth, db: DBClie
         # tick sem inflar nada. Falha nao mata o heartbeat - retorno
         # original de blocked/minutos e' o que importa pra UI.
         try:
-            await GamificationService(db).update_streak(auth.user_id)
+            await GamificationService(db).update_streak(auth.user_id, today=today)
         except Exception as e:
             logger.warning("update_streak falhou no heartbeat", error=str(e), child_id=auth.user_id)
 

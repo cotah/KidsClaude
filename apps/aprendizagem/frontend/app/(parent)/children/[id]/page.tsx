@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { ArrowLeft, Edit, MessageSquare, Shield, BarChart3, Award } from 'lucide-react';
@@ -10,6 +11,7 @@ import { ChildOverview } from '@/components/parent/child-overview';
 import { ProgressList } from '@/components/parent/progress-list';
 import { BadgeWall } from '@/components/parent/badge-wall';
 import { UsageChart } from '@/components/parent/usage-chart';
+import { DailyLimitEditor } from '@/components/parent/daily-limit-editor';
 import { serverApiClient } from '@/lib/api/server';
 import { config } from '@/lib/config';
 import { calculateLevelInfo, getLevelFloor } from '@/lib/utils';
@@ -91,7 +93,13 @@ export default async function ChildDetailPage({ params }: PageProps) {
   const progressToNextLevel = levelInfo.progress_percent;
   const nextLevelXp = getLevelFloor(currentLevel + 1);
 
-  const todayIso = new Date().toISOString().split('T')[0];
+  // "Hoje" no fuso do usuario (cookie tz setado por TimezoneInit). Sem
+  // isso, todayIso saia em UTC do server SSR e nao casava com o
+  // usage_date que o heartbeat escreve no fuso local.
+  // toLocaleDateString('en-CA', { timeZone }) devolve YYYY-MM-DD direto.
+  const cookieStore = await cookies();
+  const tz = cookieStore.get('tz')?.value;
+  const todayIso = new Date().toLocaleDateString('en-CA', tz ? { timeZone: tz } : undefined);
   const todayUsage =
     usage.find((u) => u.usage_date === todayIso)?.minutes_used ?? 0;
 
@@ -217,6 +225,9 @@ export default async function ChildDetailPage({ params }: PageProps) {
           </div>
         </Card>
       </div>
+
+      {/* Editor de limite diario - inline na pagina, sem precisar ir pra /edit */}
+      <DailyLimitEditor childId={child.id} initial={child.daily_limit_minutes} />
 
       {/* Conteúdo principal em grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

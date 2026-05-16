@@ -123,6 +123,15 @@ async function forward(req: NextRequest, pathSegments: string[]) {
   const locale = store.get('locale')?.value === 'pt' ? 'pt' : 'en';
   headers.set('accept-language', locale);
 
+  // Propaga timezone do cookie pro backend via X-Timezone (header
+  // custom). Setado pelo TimezoneInit no client-side com Intl. Backend
+  // usa pra computar "hoje" no fuso do usuario - sem isso, daily_usage
+  // e last_active_date saiam errados pra qualquer usuario fora de
+  // America/Sao_Paulo (fallback hardcoded). Sem cookie, backend cai
+  // no fallback de settings.timezone.
+  const tz = store.get('tz')?.value;
+  if (tz) headers.set('x-timezone', tz);
+
   // Body so para metodos que aceitam payload.
   const init: RequestInit = { method: req.method, headers };
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {

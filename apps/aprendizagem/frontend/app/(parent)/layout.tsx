@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { ParentNavbar } from '@/components/parent/parent-navbar';
+import { TimezoneInit } from '@/components/timezone-init';
 
 // Rotas do pai dependem do cookie de sessao - nao podem ser pre-renderizadas
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,7 @@ export default function ParentLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
+      <TimezoneInit />
       <Suspense fallback={<div className="h-16 bg-white border-b animate-pulse" />}>
         <ParentNavbar />
       </Suspense>

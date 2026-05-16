@@ -321,7 +321,14 @@
     "badges_unlocked": "Badges desbloqueados",
     "today_time": "Tempo hoje",
     "of_limit": "de {limit}min",
-    "minutes_short": "{n}min"
+    "minutes_short": "{n}min",
+    "limit_title": "Limite diário",
+    "limit_unit": "{minutes} min/dia",
+    "limit_save": "Salvar",
+    "limit_saving": "Salvando...",
+    "limit_saved_title": "Limite atualizado",
+    "limit_saved_desc": "Novo limite: {minutes} min/dia",
+    "limit_error_title": "Não consegui salvar"
   },
   "children_edit": {
     "back": "Voltar",

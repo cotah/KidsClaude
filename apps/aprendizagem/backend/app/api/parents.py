@@ -5,23 +5,27 @@ Rotas do painel de pais: dashboard, uso, eventos de segurança.
 import structlog
 from typing import List
 from datetime import datetime, date
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, Request, status, Query
 
 from app.schemas.children import ParentDashboardResponse, DashboardChildCard, BadgeInfo
 from app.schemas.common import UsageResponse, UsageEntry, SafetyEventsResponse, SafetyEvent
 from app.core.dependencies import ParentAuth, DBClient
+from app.core.timezone import user_today
 
 logger = structlog.get_logger()
 router = APIRouter()
 
 
 @router.get("/dashboard", response_model=ParentDashboardResponse)
-async def get_parent_dashboard(auth: ParentAuth, db: DBClient):
+async def get_parent_dashboard(auth: ParentAuth, db: DBClient, http_request: Request):
     """
     Painel principal do pai com resumo de todos os filhos.
     Mostra progresso, badges recentes, alertas de segurança.
     """
     try:
+        # "Hoje" no fuso do usuario (X-Timezone do BFF). Sem isso, "today_minutes"
+        # nao casa com as rows que o heartbeat escreveu na data local do filho.
+        today = user_today(http_request)
         # Busca dados básicos dos filhos
         children_data = await db.execute_query("""
             SELECT id, name, age, avatar_id, xp, level, streak_days
@@ -35,8 +39,7 @@ async def get_parent_dashboard(auth: ParentAuth, db: DBClient):
         for child in children_data:
             child_id = child['id']
 
-            # Minutos usados hoje
-            today = date.today()
+            # Minutos usados hoje (date computada acima a partir do header)
             usage_data = await db.execute_query("""
                 SELECT COALESCE(minutes_used, 0) as minutes_today
                 FROM daily_usage
@@ -98,6 +101,7 @@ async def get_child_usage(
     child_id: str,
     auth: ParentAuth,
     db: DBClient,
+    http_request: Request,
     from_date: date = Query(None, description="Data inicial (YYYY-MM-DD)"),
     to_date: date = Query(None, description="Data final (YYYY-MM-DD)")
 ):
@@ -118,9 +122,9 @@ async def get_child_usage(
                 detail={"error": {"code": "NOT_FOUND", "message": "Criança não encontrada"}}
             )
 
-        # Define intervalo de datas
+        # Define intervalo de datas (default "hoje" no fuso do usuario)
         if not to_date:
-            to_date = date.today()
+            to_date = user_today(http_request)
 
         if not from_date:
             from_date = date(to_date.year, to_date.month, to_date.day - 30)

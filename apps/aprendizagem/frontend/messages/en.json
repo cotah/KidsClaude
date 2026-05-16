@@ -321,7 +321,14 @@
     "badges_unlocked": "Badges unlocked",
     "today_time": "Time today",
     "of_limit": "of {limit}min",
-    "minutes_short": "{n}min"
+    "minutes_short": "{n}min",
+    "limit_title": "Daily limit",
+    "limit_unit": "{minutes} min/day",
+    "limit_save": "Save",
+    "limit_saving": "Saving...",
+    "limit_saved_title": "Limit updated",
+    "limit_saved_desc": "New limit: {minutes} min/day",
+    "limit_error_title": "Couldn't save"
   },
   "children_edit": {
     "back": "Back",

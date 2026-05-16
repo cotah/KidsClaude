@@ -5,7 +5,7 @@ Acessível por pais e crianças com diferentes permissões.
 
 import structlog
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, Request, status, Query
 
 from app.schemas.lessons import (
     LessonListItem, LessonDetail, ContentBlock,
@@ -16,6 +16,7 @@ from app.schemas.lessons import (
 from app.schemas.children import LessonCompleteResponse, BadgeInfo
 from app.core.dependencies import AnyAuth, ChildAuth, DBClient
 from app.core import cache
+from app.core.timezone import user_today
 from app.services.gamification import GamificationService
 
 logger = structlog.get_logger()
@@ -368,7 +369,7 @@ async def start_lesson(lesson_id: str, auth: ChildAuth, db: DBClient):
 
 
 @router.post("/{lesson_id}/complete", response_model=LessonCompleteResponse)
-async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient):
+async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient, http_request: Request):
     """
     Marca lição como concluída e concede XP.
     Verifica badges desbloqueados.
@@ -448,8 +449,8 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient):
         gamification = GamificationService(db)
         result = await gamification.award_xp(auth.user_id, xp_reward, 'lesson_completed')
 
-        # Atualiza streak
-        await gamification.update_streak(auth.user_id)
+        # Atualiza streak no fuso do usuario
+        await gamification.update_streak(auth.user_id, today=user_today(http_request))
 
         logger.info("Lição concluída", child_id=auth.user_id, lesson_id=lesson_id, xp=xp_reward, stage_unlocked=stage_unlocked)
 

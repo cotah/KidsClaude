@@ -51,7 +51,7 @@ export function UsageChart({ usage, childName }: UsageChartProps) {
           return (
             <div
               key={day.date}
-              className="flex-1 flex flex-col items-center"
+              className="flex-1 h-full flex flex-col items-center justify-end"
               title={t('tooltip', {
                 date: new Date(day.date).toLocaleDateString(dateLocale),
                 minutes: day.minutes,

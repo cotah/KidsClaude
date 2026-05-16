@@ -19,6 +19,7 @@ from app.schemas.common import ErrorResponse
 from app.core.config import settings
 from app.core.dependencies import ParentAuth, DBClient
 from app.core.security import hash_pin, verify_pin, create_child_jwt
+from app.core.timezone import user_today
 from app.db.client import supabase
 from app.services.gamification import GamificationService
 
@@ -314,7 +315,8 @@ async def child_login_direct(request: Request, payload: ChildLoginDirectRequest,
         # nao mexe). Falha nao bloqueia login.
         new_streak = int(child.get('streak_days') or 0)
         try:
-            new_streak = await GamificationService(db).update_streak(child['id'])
+            today = user_today(request)
+            new_streak = await GamificationService(db).update_streak(child['id'], today=today)
         except Exception as e:
             logger.warning("update_streak falhou no login direto", error=str(e), child_id=child['id'])
 
@@ -411,7 +413,8 @@ async def child_login(request: Request, payload: ChildLoginRequest, auth: Parent
         # Falha nao bloqueia login.
         new_streak = int(child.get('streak_days') or 0)
         try:
-            new_streak = await GamificationService(db).update_streak(child['id'])
+            today = user_today(request)
+            new_streak = await GamificationService(db).update_streak(child['id'], today=today)
         except Exception as e:
             logger.warning("update_streak falhou no login crianca", error=str(e), child_id=child['id'])
 
