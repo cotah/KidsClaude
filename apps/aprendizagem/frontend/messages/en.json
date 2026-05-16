@@ -290,7 +290,7 @@
     "age_label": "Age *",
     "age_unit": "{age} years old",
     "age_min": "Minimum age: 6 years old",
-    "age_max": "Maximum age: 12 years old",
+    "age_max": "Maximum age: 18 years old",
     "avatar_label": "Avatar *",
     "avatar_required": "Select an avatar",
     "pin_label": "Security PIN (optional)",

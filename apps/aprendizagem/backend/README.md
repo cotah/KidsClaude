@@ -1,6 +1,6 @@
 # Aprendizagem Backend
 
-Backend FastAPI para o app educacional de IA para crianças (6-12 anos). Sistema completo de chat seguro com Claude, gamificação, e painel para responsáveis.
+Backend FastAPI para o app educacional de IA para crianças e adolescentes (6-18 anos). Sistema completo de chat seguro com Claude, gamificação, e painel para responsáveis.
 
 ## Visão Geral
 

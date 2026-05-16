@@ -13,7 +13,7 @@ class ChildCreateRequest(BaseModel):
     # 3-30 chars, lowercase + digitos + hifen. Sem maiusculas, espacos ou
     # acentos pra evitar problemas de teclado mobile e login case-sensitive.
     username: str = Field(..., min_length=3, max_length=30, pattern=r'^[a-z0-9-]+$')
-    age: int = Field(..., ge=6, le=16)
+    age: int = Field(..., ge=6, le=18)
     avatar_id: str = Field(..., min_length=1)
     pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
     daily_limit_minutes: Optional[int] = Field(30, ge=5, le=180)
@@ -27,7 +27,7 @@ class ChildCreateRequest(BaseModel):
 class ChildUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=30)
     username: Optional[str] = Field(None, min_length=3, max_length=30, pattern=r'^[a-z0-9-]+$')
-    age: Optional[int] = Field(None, ge=6, le=16)
+    age: Optional[int] = Field(None, ge=6, le=18)
     avatar_id: Optional[str] = None
     pin: Optional[str] = Field(None, pattern=r'^\d{4}$')
     daily_limit_minutes: Optional[int] = Field(None, ge=5, le=180)

@@ -152,7 +152,7 @@ class ModerationService:
         text_preview = text[:200] if text else ""
         try:
             if is_output:
-                prompt = f"""Analise esta resposta destinada a uma criança de 6-12 anos e classifique-a em categorias de segurança:
+                prompt = f"""Analise esta resposta destinada a uma criança de 6-18 anos e classifique-a em categorias de segurança:
 
 Texto: "{text}"
 

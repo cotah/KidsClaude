@@ -41,7 +41,7 @@ export default function CreateChildPage() {
           .min(3, t('username_min'))
           .max(30, t('username_max'))
           .regex(/^[a-z0-9-]+$/, t('username_format')),
-        age: z.number().min(6, t('age_min')).max(12, t('age_max')),
+        age: z.number().min(6, t('age_min')).max(18, t('age_max')),
         avatar_id: z.string().min(1, t('avatar_required')),
         pin: z
           .string()
@@ -179,7 +179,7 @@ export default function CreateChildPage() {
               id="age"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              {Array.from({ length: 7 }, (_, i) => i + 6).map(age => (
+              {Array.from({ length: 13 }, (_, i) => i + 6).map(age => (
                 <option key={age} value={age}>
                   {t('age_unit', { age })}
                 </option>

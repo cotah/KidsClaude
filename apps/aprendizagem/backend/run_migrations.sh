@@ -201,4 +201,20 @@ else
     echo "[migrate] 013 already applied (title_en populated), skipping"
 fi
 
+# Gate 014: relaxa idade max de 12 para 18. Sentinel: procura check
+# constraint na tabela children que mencione "18" em sua definicao.
+# Se ja existir -> 014 aplicada; senao -> rodar.
+AGE_18_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'children'::regclass AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%age%18%');" 2>/dev/null | tr -d ' \n')
+
+if [ "$AGE_18_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 014..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 014_age_limit_to_18.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/014_age_limit_to_18.sql
+    echo "[migrate] 014 done"
+else
+    echo "[migrate] 014 already applied (age constraint allows 18), skipping"
+fi
+
 echo "[migrate] done. starting server..."

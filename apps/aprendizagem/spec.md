@@ -1,6 +1,6 @@
 # Spec Tecnico — App "aprendizagem"
 
-> Especificacao tecnica completa do app que ensina criancas (6-12 anos) a usar Claude e assistentes de IA de forma divertida, visual e segura.
+> Especificacao tecnica completa do app que ensina criancas (6-18 anos) a usar Claude e assistentes de IA de forma divertida, visual e segura.
 > Documento e a fonte unica da verdade para os agentes backend, frontend, qa e deploy.
 > Todo codigo e identificadores em ingles. Comentarios e textos de produto em portugues do Brasil.
 
@@ -116,7 +116,7 @@ O **aprendizagem** e um aplicativo web educacional que ensina criancas de 6 a 12
 
 ### US-03 — Criar perfil de filho
 **Como** pai **eu quero** criar um perfil para meu filho **para** que ele possa usar o app com configuracoes proprias.
-- G/W/T 1: Nome (1-30 chars), idade (6-12), avatar (id de catalogo), PIN opcional (4 digitos numericos) → 201 e perfil aparece na lista.
+- G/W/T 1: Nome (1-30 chars), idade (6-18), avatar (id de catalogo), PIN opcional (4 digitos numericos) → 201 e perfil aparece na lista.
 - G/W/T 2: Idade fora do intervalo → 422.
 - G/W/T 3: Pai pode ter no maximo 5 filhos no MVP → 6o cadastro retorna 409.
 - G/W/T 4: Apenas o pai dono pode editar/deletar (RLS).
@@ -574,7 +574,7 @@ UX crianca:
 ### 9.2 System prompt (template, com cache)
 
 ```
-Voce e o Atena, um assistente amigavel que conversa com criancas de 6 a 12 anos.
+Voce e o Atena, um assistente amigavel que conversa com criancas de 6 a 18 anos.
 Regras inegociaveis:
 - Use linguagem simples, frases curtas, tom alegre e acolhedor.
 - Nunca discuta: violencia explicita, sexo, drogas, suicidio/auto-lesao, odio, politica partidaria, religiao especifica, dados pessoais.

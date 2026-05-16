@@ -1,6 +1,6 @@
 # Aprendizagem Frontend
 
-Interface frontend para o app educacional que ensina crianças de 6 a 12 anos a usar assistentes de IA de forma segura e divertida.
+Interface frontend para o app educacional que ensina crianças e adolescentes de 6 a 18 anos a usar assistentes de IA de forma segura e divertida.
 
 ## 🚀 Tecnologias
 
@@ -26,7 +26,7 @@ Interface frontend para o app educacional que ensina crianças de 6 a 12 anos a 
 - Fonte: **Nunito** (arredondada e legível)
 - Escalas específicas por idade:
   - 6-8 anos: fontes ≥18px, botões ≥56px
-  - 9-12 anos: fontes ≥16px, botões ≥48px
+  - 9-18 anos: fontes ≥16px, botões ≥48px
 
 ### Componentes Especializados
 - **KidCard**: Cards coloridos com hover animado

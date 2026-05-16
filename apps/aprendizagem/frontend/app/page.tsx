@@ -36,8 +36,8 @@ export default function HomePage() {
               <span className="text-sunny-500 block">Inteligência Artificial</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Uma forma segura, divertida e educativa para crianças de 6 a 12 anos
-              aprenderem a conversar com assistentes de IA como a Claude.
+              Uma forma segura, divertida e educativa para crianças e adolescentes de
+              6 a 18 anos aprenderem a conversar com assistentes de IA como a Claude.
             </p>
           </div>
 
