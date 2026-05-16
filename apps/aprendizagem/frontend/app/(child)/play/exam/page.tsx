@@ -71,6 +71,10 @@ export default function ExamPage() {
   const [inputValue, setInputValue] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [examResult, setExamResult] = React.useState<ExamSubmitResponse | null>(null);
+  // Loading inicial enquanto tentamos restaurar sessao ativa do backend.
+  // Antes de saber se ha sessao, nao podemos mostrar nem o intro (que
+  // poderia disparar /start de novo) nem o chat (sem dados).
+  const [isRestoring, setIsRestoring] = React.useState(true);
 
   // Buscar dados da lição do exame final
   const { data: examLesson, isLoading: isLoadingLesson } = useQuery({
@@ -82,6 +86,40 @@ export default function ExamPage() {
     enabled: !!currentChild,
   });
 
+  // Restore on mount: tenta carregar sessao ativa do backend antes de
+  // mostrar o intro. Se 404, nada a restaurar e fica em intro. Se ja'
+  // existe sessao, repopula messages/step/isComplete pra que reload
+  // continue do ponto onde parou em vez de Atena ter contexto que a
+  // crianca nao ve na tela.
+  React.useEffect(() => {
+    if (!currentChild) return;
+    let cancelled = false;
+    examApi
+      .getActiveSession()
+      .then((active) => {
+        if (cancelled) return;
+        if (active) {
+          setExamSession({
+            session_id: active.session_id,
+            started_at: active.started_at,
+            lesson_id: active.lesson_id,
+          });
+          setMessages(active.messages);
+          setCurrentStep(active.current_step);
+          setIsComplete(active.is_complete);
+        }
+      })
+      .catch(() => {
+        // Erro nao-404 - intro segue como fallback, log ja sai do apiClient.
+      })
+      .finally(() => {
+        if (!cancelled) setIsRestoring(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentChild]);
+
   // Iniciar exame
   const startExamMutation = useMutation({
     mutationFn: () => examApi.startExam(),
@@ -89,12 +127,16 @@ export default function ExamPage() {
       setExamSession(session);
       // Mensagem de abertura vem do backend agora, adaptada por idade
       // e locale e com o nome real da crianca. Antes era hardcoded aqui.
-      setMessages([
-        {
-          role: 'assistant',
-          content: session.opening_message,
-        }
-      ]);
+      // opening_message e' obrigatorio no payload de /start (so opcional
+      // no type pra acomodar restore via /active que ja inclui no array).
+      if (session.opening_message) {
+        setMessages([
+          {
+            role: 'assistant',
+            content: session.opening_message,
+          }
+        ]);
+      }
     },
     onError: (error: any) => {
       // Se exame estiver bloqueado (403 EXAM_LOCKED), voltar ao hub
@@ -170,6 +212,19 @@ export default function ExamPage() {
 
   if (examResult) {
     return <ExamCelebration result={examResult} />;
+  }
+
+  // Restore em curso: skeleton enquanto consultamos /sessions/active.
+  // Evita flash da intro quando ja existe sessao + evita /start duplo
+  // se a crianca clicasse "comecar" antes de saber que ha sessao ativa.
+  if (isRestoring) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-yellow-100 to-purple-200 flex items-center justify-center">
+        <div className="max-w-md w-full px-6">
+          <div className="h-48 rounded-kid-lg bg-gradient-to-br from-purple-200 to-yellow-200 animate-pulse" />
+        </div>
+      </div>
+    );
   }
 
   return (

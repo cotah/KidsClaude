@@ -16,7 +16,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from datetime import datetime
 
 from app.schemas.lessons import (
-    ExamStartResponse, ExamMessageRequest, ExamMessageResponse, ExamSubmitResponse
+    ExamStartResponse, ExamMessageRequest, ExamMessageResponse, ExamSubmitResponse,
+    ExamActiveSessionResponse, ExamMessage,
 )
 from app.schemas.children import BadgeInfo
 from app.core.dependencies import ChildAuth, DBClient
@@ -342,9 +343,16 @@ async def start_exam(auth: ChildAuth, db: DBClient, http_request: Request):
             WHERE child_id = $1 AND lesson_id = $2 AND is_exam = true AND is_active = true
         """, auth.user_id, exam_lesson_id)
 
+        # Mensagem de abertura adaptada por idade/locale - antes hardcoded
+        # no frontend, agora gerada com o nome real da crianca.
+        locale = http_request.headers.get("accept-language", "en")
+        opening = _select_exam_opening(child_age, locale, child_name)
+
         if existing_session:
             session_id = existing_session[0]['id']
             started_at = datetime.utcnow()  # Para esta implementação, usar now()
+            # Sessao existente ja' tem opening no chat_messages (inserido
+            # quando foi criada). Nao reinserir.
         else:
             # Cria nova sessão de exame
             session_result = await db.execute_query("""
@@ -356,10 +364,15 @@ async def start_exam(auth: ChildAuth, db: DBClient, http_request: Request):
             session_id = session_result[0]['id']
             started_at = session_result[0]['started_at']
 
-        # Mensagem de abertura adaptada por idade/locale - antes hardcoded
-        # no frontend, agora gerada com o nome real da crianca.
-        locale = http_request.headers.get("accept-language", "en")
-        opening = _select_exam_opening(child_age, locale, child_name)
+            # Persiste a mensagem de abertura como primeira mensagem do
+            # historico. Sem isso, recarregar /play/exam acharia uma sessao
+            # ativa sem nada do que a Atena perguntou no comeco - tambem
+            # ajuda Claude a ter conversation_history completo nas chamadas
+            # subsequentes (sabe exatamente o que perguntou no inicio).
+            await db.execute_non_query("""
+                INSERT INTO chat_messages (session_id, role, content, created_at)
+                VALUES ($1, 'assistant', $2, NOW())
+            """, session_id, opening)
 
         logger.info(
             "Exame iniciado",
@@ -380,6 +393,85 @@ async def start_exam(auth: ChildAuth, db: DBClient, http_request: Request):
         raise
     except Exception as e:
         logger.error("Erro ao iniciar exame", error=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@router.get("/sessions/active", response_model=ExamActiveSessionResponse)
+async def get_active_exam_session(auth: ChildAuth, db: DBClient):
+    """
+    Retorna a sessao de exame ATIVA da crianca, se houver, com historico
+    completo + step atual + flag de conclusao. Permite recarregar a
+    pagina /play/exam e continuar do mesmo ponto em vez de comecar do
+    zero (e ainda assim mandar conversation_history pro Claude, deixando
+    o modelo "lembrar" do que a crianca nao viu).
+
+    404 NOT_FOUND quando nao ha sessao ativa - frontend cai no fluxo de
+    intro normal.
+    """
+    try:
+        session_data = await db.execute_query("""
+            SELECT id, started_at, lesson_id
+            FROM chat_sessions
+            WHERE child_id = $1 AND is_exam = true AND is_active = true
+            ORDER BY started_at DESC
+            LIMIT 1
+        """, auth.user_id)
+
+        if not session_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": {"code": "NOT_FOUND", "message": "Sem sessao ativa de exame"}}
+            )
+
+        session = session_data[0]
+
+        messages_data = await db.execute_query("""
+            SELECT role, content
+            FROM chat_messages
+            WHERE session_id = $1
+            ORDER BY created_at ASC
+        """, session['id'])
+
+        messages = [ExamMessage(role=m['role'], content=m['content']) for m in messages_data]
+
+        # current_step = numero de mensagens da Atena, capeado em 6 (max
+        # de qualquer projeto). Mesma logica do send_exam_message.
+        assistant_count = sum(1 for m in messages if m.role == 'assistant')
+        current_step = max(1, min(assistant_count, 6))
+
+        # is_complete (heuristica): ultima mensagem da Atena tem [[ ]].
+        # Marcador PROJETO_COMPLETO ja foi strippado antes de gravar,
+        # entao nao da' pra checar exato - mas Atena so usa [[ ]] na
+        # entrega final por contrato do prompt, entao basta.
+        last_assistant_content = None
+        for m in reversed(messages):
+            if m.role == 'assistant':
+                last_assistant_content = m.content
+                break
+        is_complete = bool(last_assistant_content and _BRACKETS_RE.search(last_assistant_content))
+
+        logger.info(
+            "Sessao ativa de exame restaurada",
+            child_id=auth.user_id,
+            session_id=session['id'],
+            messages=len(messages),
+            current_step=current_step,
+            is_complete=is_complete,
+        )
+
+        return ExamActiveSessionResponse(
+            session_id=session['id'],
+            started_at=session['started_at'],
+            lesson_id=session['lesson_id'],
+            messages=messages,
+            current_step=current_step,
+            is_complete=is_complete,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro ao buscar sessao ativa de exame", error=str(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

@@ -10,6 +10,7 @@ import type {
   ChallengeAttemptResponse,
   StagesResponse,
   ExamSession,
+  ExamActiveSession,
   ExamMessageRequest,
   ExamMessageResponse,
   ExamSubmitResponse,
@@ -108,6 +109,27 @@ export const examApi = {
       };
     }
     return apiClient.post('exam/start', {});
+  },
+
+  /**
+   * Retorna a sessao ativa de exame da crianca (com historico completo),
+   * ou null se nao houver nenhuma. Usado pra restaurar o estado ao
+   * recarregar /play/exam - sem isso a conversa some da tela mas o
+   * backend continua com tudo em DB, criando dessincronia.
+   */
+  async getActiveSession(): Promise<ExamActiveSession | null> {
+    if (config.features.useMocks) {
+      await mockDelay();
+      return null;
+    }
+    try {
+      return await apiClient.get<ExamActiveSession>('exam/sessions/active');
+    } catch (err: any) {
+      // 404 = nao tem sessao ativa, fluxo normal de "comecar do zero".
+      // Qualquer outro erro propaga normal.
+      if (err?.status === 404 || err?.response?.status === 404) return null;
+      throw err;
+    }
   },
 
   async sendExamMessage(sessionId: string, data: ExamMessageRequest): Promise<ExamMessageResponse> {

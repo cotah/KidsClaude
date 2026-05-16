@@ -140,3 +140,22 @@ class ExamSubmitResponse(BaseModel):
     badges_unlocked: List[str]
     summary: str
     plan: Dict[str, Any]
+
+
+class ExamMessage(BaseModel):
+    role: str  # 'child' | 'assistant'
+    content: str
+
+
+class ExamActiveSessionResponse(BaseModel):
+    """Estado completo de uma sessao de exame ativa pra restaurar a UI
+    apos reload. Apresenta todo o historico que estava no DB mais step
+    atual + flag de conclusao - frontend usa pra continuar do ponto onde
+    parou em vez de comecar do zero (e mostrar conversa que a Atena
+    ja viu mas a crianca nao)."""
+    session_id: str
+    started_at: datetime
+    lesson_id: str
+    messages: List[ExamMessage]
+    current_step: int
+    is_complete: bool

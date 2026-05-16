@@ -277,7 +277,21 @@ export interface ExamSession {
   lesson_id: string;
   // Primeira fala da Atena vem do backend agora (adaptada por idade
   // + locale). Substitui o hardcoded que estava em exam/page.tsx.
-  opening_message: string;
+  // Opcional pra suportar restore via /sessions/active onde o opening
+  // ja' faz parte do array messages e nao precisa vir separado.
+  opening_message?: string;
+}
+
+// Estado completo de uma sessao de exame ativa, retornado por
+// GET /v1/exam/sessions/active. Usado pra restaurar a UI apos reload
+// sem perder o contexto que o backend ja tem em DB.
+export interface ExamActiveSession {
+  session_id: string;
+  started_at: string;
+  lesson_id: string;
+  messages: Array<{ role: 'child' | 'assistant'; content: string }>;
+  current_step: number;
+  is_complete: boolean;
 }
 
 export interface ExamMessageRequest {
