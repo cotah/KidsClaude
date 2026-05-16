@@ -654,13 +654,97 @@ function ExamCelebration({ result }: { result: ExamSubmitResponse }) {
 }
 
 /**
- * Renderiza a mensagem do assistente destacando conteudo entre [[ ]]
- * como um bloco mono com fundo diferente - sinaliza pra crianca que
- * aquela e' a criacao final dela (prompt, ficha, system prompt etc).
- *
- * Backend instrui a Atena a usar [[ ]] ao volta da criacao no fim de
- * cada projeto. Aqui parseamos o texto em segmentos plain/highlight
- * e renderizamos cada um com seu estilo proprio.
+ * Strip markdown que nao queremos renderizar (headers, code, links).
+ * **bold** e listas com - sao tratados pelo renderer abaixo, entao NAO
+ * stripamos aqui - perderiamos a informacao. NAO usamos o stripMarkdown
+ * de lib/utils/markdown.ts porque ele e' destrutivo demais pra esse
+ * caso (remove ** e converte - em • inline em vez de bullet visual).
+ */
+function stripUnrenderable(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/```[a-zA-Z]*\n?([\s\S]*?)```/g, '$1')
+    .replace(/`([^`\n]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+}
+
+/**
+ * Renderiza uma linha com **bold** inline -> <strong>. Quebra por pares
+ * de **...** preservando o restante como texto puro.
+ */
+function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*\n]+\*\*)/g);
+  return parts.map((p, i) => {
+    const m = p.match(/^\*\*([^*\n]+)\*\*$/);
+    if (m) {
+      return (
+        <strong key={`${keyPrefix}-${i}`} className="font-bold text-purple-900">
+          {m[1]}
+        </strong>
+      );
+    }
+    return <React.Fragment key={`${keyPrefix}-${i}`}>{p}</React.Fragment>;
+  });
+}
+
+/**
+ * Quebra um segmento de texto em paragrafos e listas. Linhas comecando
+ * com "- " ou "* " agrupam num <ul> com bolinhas roxas; o resto vira
+ * <p>. Cada item passa por renderInline pra processar **bold**.
+ */
+function renderTextSegment(text: string, keyPrefix: string): React.ReactNode {
+  const cleaned = stripUnrenderable(text);
+  const lines = cleaned.split('\n');
+  const blocks: Array<{ kind: 'p'; text: string } | { kind: 'ul'; items: string[] }> = [];
+  let currentList: string[] | null = null;
+
+  for (const line of lines) {
+    const bullet = line.match(/^\s*[-*+]\s+(.+)/);
+    if (bullet) {
+      if (!currentList) currentList = [];
+      currentList.push(bullet[1]);
+    } else {
+      if (currentList) {
+        blocks.push({ kind: 'ul', items: currentList });
+        currentList = null;
+      }
+      if (line.trim()) {
+        blocks.push({ kind: 'p', text: line });
+      }
+    }
+  }
+  if (currentList) blocks.push({ kind: 'ul', items: currentList });
+
+  return blocks.map((b, i) => {
+    const key = `${keyPrefix}-b${i}`;
+    if (b.kind === 'ul') {
+      return (
+        <ul key={key} className="space-y-1.5 pl-1">
+          {b.items.map((item, j) => (
+            <li key={`${key}-${j}`} className="flex items-start gap-2 text-kid-base">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-purple-500" />
+              <span className="flex-1">{renderInline(item, `${key}-${j}`)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    return (
+      <p key={key} className="text-kid-base">
+        {renderInline(b.text, key)}
+      </p>
+    );
+  });
+}
+
+/**
+ * Renderiza a mensagem do assistente:
+ * 1) Destaca conteudo entre [[ ]] num bloco mono purple/yellow
+ *    (sinaliza pra crianca que aquela e' a criacao final dela).
+ * 2) Fora dos blocos [[ ]], renderiza markdown leve: **bold** vira
+ *    <strong> roxo, "- item"/"* item" viram bullets visuais com
+ *    bolinha roxa, e headers/code/links sao stripados (Atena nao
+ *    deveria usar mas o modelo as vezes solta).
  */
 function AssistantMessageContent({ content }: { content: string }) {
   // Split conservador: aceita multiplos blocos [[...]] na mesma mensagem.
@@ -680,17 +764,14 @@ function AssistantMessageContent({ content }: { content: string }) {
     segments.push({ kind: 'text', value: content.slice(lastIndex) });
   }
 
-  // Sem blocos: renderiza igual ao antes.
-  if (segments.every((s) => s.kind === 'text')) {
-    return <p className="text-kid-base">{content}</p>;
-  }
-
   return (
     <div className="space-y-2">
       {segments.map((seg, i) =>
         seg.kind === 'text' ? (
           seg.value.trim() ? (
-            <p key={i} className="text-kid-base whitespace-pre-wrap">{seg.value}</p>
+            <div key={i} className="space-y-2">
+              {renderTextSegment(seg.value, `s${i}`)}
+            </div>
           ) : null
         ) : (
           <pre
