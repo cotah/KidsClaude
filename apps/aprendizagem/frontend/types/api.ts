@@ -383,6 +383,7 @@ export interface DashboardData {
     streak_days: number;
     today_minutes: number;
     recent_badges: Badge[];
+    badges_count: number;
     alerts_count: number;
   }>;
 }

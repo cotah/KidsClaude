@@ -100,6 +100,7 @@ interface ChildCardProps {
     streak_days: number;
     today_minutes: number;
     recent_badges: any[];
+    badges_count: number;
     alerts_count: number;
   };
 }
@@ -146,7 +147,7 @@ function ChildCard({ child }: ChildCardProps) {
           )}
           <div className="flex justify-between text-sm">
             <span>{t('achievements')}</span>
-            <span>{t('badges_count', { count: child.recent_badges.length })}</span>
+            <span>{t('badges_count', { count: child.badges_count })}</span>
           </div>
         </div>
 

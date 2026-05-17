@@ -108,6 +108,10 @@ class DashboardChildCard(BaseModel):
     streak_days: int
     today_minutes: int
     recent_badges: List[BadgeInfo]
+    # Total de badges desbloqueados (COUNT real de child_badges). recent_badges
+    # ainda existe pra mostrar os ultimos 3, mas o numero do card deve usar
+    # este campo (antes o frontend usava recent_badges.length, capado em 3).
+    badges_count: int
     alerts_count: int
 
 

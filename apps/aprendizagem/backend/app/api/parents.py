@@ -62,6 +62,15 @@ async def get_parent_dashboard(auth: ParentAuth, db: DBClient, http_request: Req
                 BadgeInfo(**badge) for badge in recent_badges_data
             ]
 
+            # Total de badges desbloqueados (count real, sem limite/janela).
+            # recent_badges acima e' apenas os 3 mais recentes dos ultimos 7
+            # dias para preview - nao serve como total.
+            badges_count_data = await db.execute_query(
+                "SELECT COUNT(*) AS total FROM child_badges WHERE child_id = $1",
+                child_id,
+            )
+            badges_count = int(badges_count_data[0]['total']) if badges_count_data else 0
+
             # Alertas de segurança não vistos (últimos 30 dias)
             alerts_data = await db.execute_query("""
                 SELECT COUNT(*) as alerts_count
@@ -82,6 +91,7 @@ async def get_parent_dashboard(auth: ParentAuth, db: DBClient, http_request: Req
                 streak_days=child['streak_days'],
                 today_minutes=today_minutes,
                 recent_badges=recent_badges,
+                badges_count=badges_count,
                 alerts_count=alerts_count
             )
 

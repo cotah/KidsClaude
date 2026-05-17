@@ -35,8 +35,13 @@ def _lessons_cache_key(stage: Optional[int], age_band: Optional[str], role: str,
 async def list_lessons(
     auth: AnyAuth,
     db: DBClient,
-    age_band: Optional[str] = Query(None, pattern="^(6-8|9-10|11-12|12\\+)$"),
-    stage: Optional[int] = Query(None, ge=1, le=5)
+    # age_band aceita os 4 tiers tradicionais + '6-18' (multi-idade, usado
+    # por Stage 2 Thinking e Stage 6 Mastery). Sem '6-18' aqui o FastAPI
+    # rejeitava com 422 e escondia silenciosamente essas licoes do listing.
+    age_band: Optional[str] = Query(None, pattern="^(6-8|9-10|11-12|12\\+|6-18)$"),
+    # Sem le= pra nao precisar atualizar a cada nova stage adicionada via
+    # migration (mesmo principio aplicado em /play/stage/[stageId] no front).
+    stage: Optional[int] = Query(None, ge=1)
 ):
     """
     Lista lições disponíveis.
@@ -78,7 +83,10 @@ async def list_lessons(
         params = []
 
         if age_band:
-            where_clause += f" AND age_band = ${len(params) + 1}"
+            # Inclui licoes multi-idade ('6-18') ao lado do tier especifico,
+            # senao Stage 2/Stage 6 sumiriam do listing global quando o
+            # auto-band atribui '6-8'/'9-10'/'11-12'/'12+'.
+            where_clause += f" AND (age_band = ${len(params) + 1} OR age_band = '6-18')"
             params.append(age_band)
 
         if stage:
