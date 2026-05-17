@@ -146,15 +146,17 @@ class TestCurriculumRedesign:
         # Curriculum v3 (migration 018 + sucessoras de conteudo):
         #   018: Reset completo + Missao 01 (6 lessons)
         #   019: Missao 02 - Como a IA funciona? (6 lessons)
-        # Stages 3-16 ficam vazias ate' migrations 020+ serem escritas.
+        #   020: Missao 03 - Como conversar com IA (6 lessons)
+        # Stages 4-16 ficam vazias ate' migrations 021+ serem escritas.
         # Final exam fica em stage 17 (movido pela 018).
         expected_lessons_per_stage = {
             1:  6,   # Missao 01 - O que e IA? (migration 018)
             2:  6,   # Missao 02 - Como a IA funciona? (migration 019)
+            3:  6,   # Missao 03 - Como conversar com IA (migration 020)
             17: 1,   # Final Exam (stage 17 desde a 018)
         }
         total = sum(expected_lessons_per_stage.values())
-        assert total == 13, f"Esperadas 13 licoes total, dicionario soma {total}"
+        assert total == 19, f"Esperadas 19 licoes total, dicionario soma {total}"
 
     @pytest.mark.asyncio
     async def test_new_age_bands(self):

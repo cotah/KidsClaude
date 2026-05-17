@@ -337,4 +337,20 @@ else
     echo "[migrate] 019 already applied (s2-ia-aprende-como-crianca present), skipping"
 fi
 
+# Gate 020: insere conteudo da Missao 03 (6 licoes + 12 challenges + 15 templates).
+# Sentinel slug-only (mesmo pattern da 019): slug 's3-o-que-e-prompt' criado
+# pela 020. BEGIN/COMMIT garante atomicidade - se falhar, slug nao persiste.
+MISSAO_03_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's3-o-que-e-prompt');" 2>/dev/null | tr -d ' \n')
+
+if [ "$MISSAO_03_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 020..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 020_missao_03.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/020_missao_03.sql
+    echo "[migrate] 020 done"
+else
+    echo "[migrate] 020 already applied (s3-o-que-e-prompt present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
