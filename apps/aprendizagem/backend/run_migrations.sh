@@ -232,4 +232,20 @@ else
     echo "[migrate] 015 already applied (stage<=6 constraint present), skipping"
 fi
 
+# Gate 016: backfill EN content_blocks + adicionar prompt_templates pras
+# 6 licoes de Stage 2. Sentinel: existe prompt_template pra
+# 's2-ia-pode-errar' (1a licao). Se nao, roda. Se ja' existe, skip.
+TEMPLATES_016_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM prompt_templates pt JOIN lessons l ON pt.lesson_id = l.id WHERE l.slug = 's2-ia-pode-errar');" 2>/dev/null | tr -d ' \n')
+
+if [ "$TEMPLATES_016_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 016..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 016_thinking_en_and_templates.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/016_thinking_en_and_templates.sql
+    echo "[migrate] 016 done"
+else
+    echo "[migrate] 016 already applied (templates for s2-ia-pode-errar present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
