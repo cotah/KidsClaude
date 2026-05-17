@@ -143,17 +143,16 @@ class TestCurriculumRedesign:
         curriculum) e depois 015 (Thinking) - reading arquivo errado.
         Test agora valida o dicionario contra a soma total (23 licoes).
         """
+        # Curriculum v3 (migration 018): reset completo. 16 missoes + final exam.
+        # Apenas stage 1 ("Missao 01 - O que e IA?") tem conteudo nesse drop;
+        # stages 2-16 ficam vazias ate' o conteudo ser escrito. Final exam
+        # mudou de stage 7 pra stage 17.
         expected_lessons_per_stage = {
-            1: 4,   # Discovery
-            2: 6,   # Thinking (migration 015)
-            3: 4,   # Exploration
-            4: 4,   # Creation
-            5: 4,   # Prompt Engineering
-            6: 6,   # Mastery (migration 017 - 5 conteudo + 1 teste)
-            7: 1,   # Final Exam (moved from 6 to 7 by migration 017)
+            1:  6,   # Missao 01 - O que e IA? (5 conteudo + 1 teste)
+            17: 1,   # Final Exam (moved from stage 7 to 17 by migration 018)
         }
         total = sum(expected_lessons_per_stage.values())
-        assert total == 29, f"Esperadas 29 licoes total, dicionario soma {total}"
+        assert total == 7, f"Esperadas 7 licoes total (Missao 01 + final exam), dicionario soma {total}"
 
     @pytest.mark.asyncio
     async def test_new_age_bands(self):

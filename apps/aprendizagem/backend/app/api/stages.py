@@ -46,17 +46,26 @@ async def get_stages(auth: AnyAuth, db: DBClient):
             logger.warning("Cache de stages com shape invalido - recomputando", error=str(e))
 
     try:
-        # Define informações estáticas das stages (6 stages regulares + final exam).
-        # Stage 2 "Thinking" inserida na migration 015 entre Discovery (1) e
-        # Exploration. Stage 6 "Mastery" inserida na 017 - final exam moveu
-        # de stage 6 pra stage 7. Demais foram renumeradas em cascata.
+        # Define informações estáticas das stages (curriculum v3: 16 missoes
+        # regulares + final exam em stage 17). Todas as missoes sao
+        # multi-idade (6-18). Migration 018 reescreveu tudo do zero.
         stage_info = {
-            1: {"name": "Discovery", "description": "Vamos descobrir o que e IA", "age_band_label": "6-8 anos", "difficulty": "easy"},
-            2: {"name": "Thinking", "description": "Como a IA pensa — e onde ela erra", "age_band_label": "6-18 anos", "difficulty": "medium"},
-            3: {"name": "Exploration", "description": "Entender como prompts funcionam", "age_band_label": "9-10 anos", "difficulty": "medium"},
-            4: {"name": "Creation", "description": "Criar coisas com o Claude", "age_band_label": "11-12 anos", "difficulty": "hard"},
-            5: {"name": "Prompt Engineering", "description": "Técnicas avançadas de prompting", "age_band_label": "12+ anos", "difficulty": "advanced"},
-            6: {"name": "Mastery", "description": "Você como AI Engineer", "age_band_label": "6-18 anos", "difficulty": "advanced"}
+            1:  {"name": "Missão 01", "description": "O que é IA?", "age_band_label": "6-18 anos", "difficulty": "easy"},
+            2:  {"name": "Missão 02", "description": "Como a IA funciona?", "age_band_label": "6-18 anos", "difficulty": "easy"},
+            3:  {"name": "Missão 03", "description": "Como conversar com IA", "age_band_label": "6-18 anos", "difficulty": "medium"},
+            4:  {"name": "Missão 04", "description": "Alucinações e perigos", "age_band_label": "6-18 anos", "difficulty": "medium"},
+            5:  {"name": "Missão 05", "description": "Tipos de IA", "age_band_label": "6-18 anos", "difficulty": "medium"},
+            6:  {"name": "Missão 06", "description": "IA para criar", "age_band_label": "6-18 anos", "difficulty": "medium"},
+            7:  {"name": "Missão 07", "description": "IA para estudos", "age_band_label": "6-18 anos", "difficulty": "medium"},
+            8:  {"name": "Missão 08", "description": "IA para resolver problemas", "age_band_label": "6-18 anos", "difficulty": "medium"},
+            9:  {"name": "Missão 09", "description": "IA, robôs e humanoides", "age_band_label": "6-18 anos", "difficulty": "hard"},
+            10: {"name": "Missão 10", "description": "O futuro da IA", "age_band_label": "6-18 anos", "difficulty": "hard"},
+            11: {"name": "Missão 11", "description": "APIs, MCP e conexões", "age_band_label": "6-18 anos", "difficulty": "hard"},
+            12: {"name": "Missão 12", "description": "Agentes e automações", "age_band_label": "6-18 anos", "difficulty": "hard"},
+            13: {"name": "Missão 13", "description": "Criar projetos reais", "age_band_label": "6-18 anos", "difficulty": "advanced"},
+            14: {"name": "Missão 14", "description": "Jogos, apps e negócios", "age_band_label": "6-18 anos", "difficulty": "advanced"},
+            15: {"name": "Missão 15", "description": "Ética e responsabilidade", "age_band_label": "6-18 anos", "difficulty": "advanced"},
+            16: {"name": "Missão 16", "description": "Como ser master em IA", "age_band_label": "6-18 anos", "difficulty": "advanced"},
         }
 
         # Busca progresso por stage. Duas queries separadas para evitar passar
@@ -103,9 +112,9 @@ async def get_stages(auth: AnyAuth, db: DBClient):
             if total == completed and completed > 0:
                 completed_stages.add(stage_num)
 
-        # Monta resposta das stages (6 stages regulares)
+        # Monta resposta das stages (16 missoes regulares - curriculum v3)
         stages = []
-        for stage_num in range(1, 7):
+        for stage_num in range(1, 17):
             info = stage_info[stage_num]
             progress = progress_map.get(stage_num, {"total": 0, "completed": 0})
 
@@ -148,8 +157,8 @@ async def get_stages(auth: AnyAuth, db: DBClient):
                     exam_progress and exam_progress[0]['status'] == 'completed'
                 )
 
-            # Exame desbloqueado se todas as 6 stages estão completas
-            exam_unlocked = {1, 2, 3, 4, 5, 6}.issubset(completed_stages)
+            # Exame desbloqueado se todas as 16 missoes estao completas
+            exam_unlocked = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}.issubset(completed_stages)
 
             final_exam = FinalExamInfo(
                 lesson_id=exam_lesson_id,

@@ -166,36 +166,22 @@
     "celebration_footer": "Você agora é oficialmente um Construtor Capstone! 👑"
   },
   "stage_info": {
-    "1": {
-      "name": "Discovery",
-      "description": "Vamos descobrir o que é IA",
-      "age_band_label": "6-8 anos"
-    },
-    "2": {
-      "name": "Thinking",
-      "description": "Como a IA pensa — e onde ela erra",
-      "age_band_label": "6-18 anos"
-    },
-    "3": {
-      "name": "Exploration",
-      "description": "Entender como prompts funcionam",
-      "age_band_label": "9-10 anos"
-    },
-    "4": {
-      "name": "Creation",
-      "description": "Criar coisas com a Claude",
-      "age_band_label": "11-12 anos"
-    },
-    "5": {
-      "name": "Prompt Engineering",
-      "description": "Técnicas avançadas de prompting",
-      "age_band_label": "12+ anos"
-    },
-    "6": {
-      "name": "Mastery",
-      "description": "Você como AI Engineer",
-      "age_band_label": "6-18 anos"
-    }
+    "1":  {"name": "Missão 01", "description": "O que é IA?", "age_band_label": "6-18 anos"},
+    "2":  {"name": "Missão 02", "description": "Como a IA funciona?", "age_band_label": "6-18 anos"},
+    "3":  {"name": "Missão 03", "description": "Como conversar com IA", "age_band_label": "6-18 anos"},
+    "4":  {"name": "Missão 04", "description": "Alucinações e perigos", "age_band_label": "6-18 anos"},
+    "5":  {"name": "Missão 05", "description": "Tipos de IA", "age_band_label": "6-18 anos"},
+    "6":  {"name": "Missão 06", "description": "IA para criar", "age_band_label": "6-18 anos"},
+    "7":  {"name": "Missão 07", "description": "IA para estudos", "age_band_label": "6-18 anos"},
+    "8":  {"name": "Missão 08", "description": "IA para resolver problemas", "age_band_label": "6-18 anos"},
+    "9":  {"name": "Missão 09", "description": "IA, robôs e humanoides", "age_band_label": "6-18 anos"},
+    "10": {"name": "Missão 10", "description": "O futuro da IA", "age_band_label": "6-18 anos"},
+    "11": {"name": "Missão 11", "description": "APIs, MCP e conexões", "age_band_label": "6-18 anos"},
+    "12": {"name": "Missão 12", "description": "Agentes e automações", "age_band_label": "6-18 anos"},
+    "13": {"name": "Missão 13", "description": "Criar projetos reais", "age_band_label": "6-18 anos"},
+    "14": {"name": "Missão 14", "description": "Jogos, apps e negócios", "age_band_label": "6-18 anos"},
+    "15": {"name": "Missão 15", "description": "Ética e responsabilidade", "age_band_label": "6-18 anos"},
+    "16": {"name": "Missão 16", "description": "Como ser master em IA", "age_band_label": "6-18 anos"}
   },
   "child_overview": {
     "title": "Informações gerais",

@@ -266,4 +266,20 @@ else
     echo "[migrate] 017 already applied (stage<=7 constraint present), skipping"
 fi
 
+# Gate 018: reset completo do curriculum (v3 - 16 missoes + final exam stage 17).
+# Sentinel: slug 's1-o-que-significa-ia', criado exclusivamente pela 018 e
+# imune a renumeracoes futuras. Se existe -> 018 ja' rodou; senao -> rodar.
+CURRICULUM_V3_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-significa-ia');" 2>/dev/null | tr -d ' \n')
+
+if [ "$CURRICULUM_V3_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 018..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 018_curriculum_v3_reset.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/018_curriculum_v3_reset.sql
+    echo "[migrate] 018 done"
+else
+    echo "[migrate] 018 already applied (curriculum v3 sentinel present), skipping"
+fi
+
 echo "[migrate] done. starting server..."

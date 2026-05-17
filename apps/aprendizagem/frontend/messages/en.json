@@ -166,36 +166,22 @@
     "celebration_footer": "You're officially a Capstone Builder now! 👑"
   },
   "stage_info": {
-    "1": {
-      "name": "Discovery",
-      "description": "Let's discover what AI is",
-      "age_band_label": "ages 6-8"
-    },
-    "2": {
-      "name": "Thinking",
-      "description": "How AI thinks — and where it gets things wrong",
-      "age_band_label": "ages 6-18"
-    },
-    "3": {
-      "name": "Exploration",
-      "description": "Understand how prompts work",
-      "age_band_label": "ages 9-10"
-    },
-    "4": {
-      "name": "Creation",
-      "description": "Create things with Claude",
-      "age_band_label": "ages 11-12"
-    },
-    "5": {
-      "name": "Prompt Engineering",
-      "description": "Advanced prompting techniques",
-      "age_band_label": "ages 12+"
-    },
-    "6": {
-      "name": "Mastery",
-      "description": "You as an AI Engineer",
-      "age_band_label": "ages 6-18"
-    }
+    "1":  {"name": "Mission 01", "description": "What is AI?", "age_band_label": "ages 6-18"},
+    "2":  {"name": "Mission 02", "description": "How does AI work?", "age_band_label": "ages 6-18"},
+    "3":  {"name": "Mission 03", "description": "Talking to AI", "age_band_label": "ages 6-18"},
+    "4":  {"name": "Mission 04", "description": "Hallucinations and dangers", "age_band_label": "ages 6-18"},
+    "5":  {"name": "Mission 05", "description": "Types of AI", "age_band_label": "ages 6-18"},
+    "6":  {"name": "Mission 06", "description": "AI for creation", "age_band_label": "ages 6-18"},
+    "7":  {"name": "Mission 07", "description": "AI for studying", "age_band_label": "ages 6-18"},
+    "8":  {"name": "Mission 08", "description": "AI for problem solving", "age_band_label": "ages 6-18"},
+    "9":  {"name": "Mission 09", "description": "AI, robots and humanoids", "age_band_label": "ages 6-18"},
+    "10": {"name": "Mission 10", "description": "The future of AI", "age_band_label": "ages 6-18"},
+    "11": {"name": "Mission 11", "description": "APIs, MCP and connections", "age_band_label": "ages 6-18"},
+    "12": {"name": "Mission 12", "description": "Agents and automation", "age_band_label": "ages 6-18"},
+    "13": {"name": "Mission 13", "description": "Creating real projects", "age_band_label": "ages 6-18"},
+    "14": {"name": "Mission 14", "description": "Games, apps and business", "age_band_label": "ages 6-18"},
+    "15": {"name": "Mission 15", "description": "Ethics and responsibility", "age_band_label": "ages 6-18"},
+    "16": {"name": "Mission 16", "description": "How to master AI", "age_band_label": "ages 6-18"}
   },
   "child_overview": {
     "title": "General info",
