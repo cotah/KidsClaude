@@ -217,4 +217,19 @@ else
     echo "[migrate] 014 already applied (age constraint allows 18), skipping"
 fi
 
+# Gate 015: novo Stage 2 "Thinking" + renumera demais (final exam vai pra 6).
+# Sentinel: lessons_stage_check ja aceita stage <= 6.
+STAGE_6_ALLOWED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='lessons'::regclass AND conname='lessons_stage_check' AND pg_get_constraintdef(oid) LIKE '%<= 6%');" 2>/dev/null | tr -d ' \n')
+
+if [ "$STAGE_6_ALLOWED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 015..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 015_thinking_stage.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/015_thinking_stage.sql
+    echo "[migrate] 015 done"
+else
+    echo "[migrate] 015 already applied (stage<=6 constraint present), skipping"
+fi
+
 echo "[migrate] done. starting server..."

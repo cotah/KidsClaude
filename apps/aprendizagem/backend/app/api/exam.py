@@ -331,10 +331,10 @@ async def start_exam(auth: ChildAuth, db: DBClient, http_request: Request):
             if stage_data['total_lessons'] == stage_data['completed_lessons']:
                 completed_stages.add(stage_data['stage'])
 
-        if not {1, 2, 3, 4}.issubset(completed_stages):
+        if not {1, 2, 3, 4, 5}.issubset(completed_stages):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={"error": {"code": "EXAM_LOCKED", "message": "Exame bloqueado. Complete todas as 4 stages primeiro."}}
+                detail={"error": {"code": "EXAM_LOCKED", "message": "Exame bloqueado. Complete todas as 5 stages primeiro."}}
             )
 
         # Verifica se já existe sessão ativa

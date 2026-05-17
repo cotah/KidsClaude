@@ -116,8 +116,9 @@ async def list_lessons(
                 if stage_data['total_lessons'] == stage_data['completed_lessons']:
                     completed_stages.add(stage_data['stage'])
 
-            # Para o final exam, verifica se todas as 4 stages estão completas
-            final_exam_unlocked = {1, 2, 3, 4}.issubset(completed_stages)
+            # Para o final exam, verifica se todas as 5 stages estão completas
+            # (Stage 2 "Thinking" foi adicionada na migration 015, antes eram 4).
+            final_exam_unlocked = {1, 2, 3, 4, 5}.issubset(completed_stages)
 
             # Determina que lições estão bloqueadas
             for lesson in lessons_data:
@@ -426,7 +427,7 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient, http_re
         completed_lesson_stage = lesson_stage_data[0]['stage'] if lesson_stage_data else None
 
         stage_unlocked = None
-        if completed_lesson_stage and completed_lesson_stage < 5:  # Não é final exam
+        if completed_lesson_stage and completed_lesson_stage < 6:  # Não é final exam (que agora e' stage 6)
             # Verifica se todas as lições da stage atual estão completas agora
             stage_progress = await db.execute_query("""
                 SELECT
@@ -441,10 +442,10 @@ async def complete_lesson(lesson_id: str, auth: ChildAuth, db: DBClient, http_re
                 progress = stage_progress[0]
                 if progress['total_lessons'] == progress['completed_lessons']:
                     # Stage completa - próxima stage (ou final exam) desbloqueada
-                    if completed_lesson_stage < 4:
+                    if completed_lesson_stage < 5:
                         stage_unlocked = completed_lesson_stage + 1
                     else:
-                        stage_unlocked = 5  # Final exam unlocked
+                        stage_unlocked = 6  # Final exam unlocked (agora stage 6)
 
         # Concede XP e verifica badges
         gamification = GamificationService(db)

@@ -172,16 +172,21 @@
       "age_band_label": "6-8 anos"
     },
     "2": {
+      "name": "Thinking",
+      "description": "Como a IA pensa — e onde ela erra",
+      "age_band_label": "6-18 anos"
+    },
+    "3": {
       "name": "Exploration",
       "description": "Entender como prompts funcionam",
       "age_band_label": "9-10 anos"
     },
-    "3": {
+    "4": {
       "name": "Creation",
       "description": "Criar coisas com a Claude",
       "age_band_label": "11-12 anos"
     },
-    "4": {
+    "5": {
       "name": "Prompt Engineering",
       "description": "Técnicas avançadas de prompting",
       "age_band_label": "12+ anos"

@@ -172,16 +172,21 @@
       "age_band_label": "ages 6-8"
     },
     "2": {
+      "name": "Thinking",
+      "description": "How AI thinks — and where it gets things wrong",
+      "age_band_label": "ages 6-18"
+    },
+    "3": {
       "name": "Exploration",
       "description": "Understand how prompts work",
       "age_band_label": "ages 9-10"
     },
-    "3": {
+    "4": {
       "name": "Creation",
       "description": "Create things with Claude",
       "age_band_label": "ages 11-12"
     },
-    "4": {
+    "5": {
       "name": "Prompt Engineering",
       "description": "Advanced prompting techniques",
       "age_band_label": "ages 12+"
