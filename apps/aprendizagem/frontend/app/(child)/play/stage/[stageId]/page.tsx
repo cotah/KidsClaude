@@ -73,7 +73,11 @@ export default function StagePage() {
     );
   }
 
-  if (isNaN(stageId) || stageId < 1 || stageId > 4) {
+  // Guarda apenas valores invalidos (NaN, negativos, zero). Limite superior
+  // removido pra nao precisar atualizar esse arquivo a cada nova stage; se
+  // a stage nao existir, o backend devolve lista vazia de lessons e o que
+  // ja' temos abaixo renderiza naturalmente como "nenhuma licao".
+  if (isNaN(stageId) || stageId < 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-sunny-100 to-mint-100 flex items-center justify-center">
         <div className="text-center space-y-4">
