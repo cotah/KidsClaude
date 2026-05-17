@@ -62,6 +62,27 @@ else
     echo "[migrate] 004 already applied (final exam exists), skipping"
 fi
 
+# =============================================================================
+# V3 FENCE: pula todo o bloco legacy (005-017) quando curriculum v3 ja' esta
+# ativo. Necessario porque a 018 deletou os sentinels que os gates 005/015/016
+# usavam (slugs 's1-o-que-e-ia' e 's2-ia-pode-errar') e alterou a constraint
+# que 017 checava (<=7 -> <=17). Sem o fence, qualquer restart fresco do
+# container dispararia esses gates e:
+#   - 005 falharia em FK de prompt_templates da Missao 01/02
+#   - 015 falharia: ALTER stage <= 6 com final exam em stage=17
+#   - 017 falharia: ALTER stage <= 7 com final exam em stage=17
+#
+# Sentinel do fence: slug 's1-o-que-significa-ia' (criado pela 018, nunca
+# deletado por ninguem). Se presente -> v3 ja' ativo -> pula tudo. Se ausente
+# -> DB fresca (ou pre-v3) -> roda a cadeia legacy normal pra construir o
+# estado, e depois 018 entra e converte pra v3.
+# =============================================================================
+HAS_V3=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-significa-ia');" 2>/dev/null | tr -d ' \n')
+
+if [ "$HAS_V3" = "t" ]; then
+    echo "[migrate] v3 fence: curriculum v3 ja' ativo - pulando legacy 005-017"
+else
+
 # Gate 005: novo curriculo (16 licoes nas stages 1-4). Detectamos via slug
 # canonico 's1-o-que-e-ia' que so' aparece nesse seed; se ele existe, 005
 # ja foi aplicado e podemos pular.
@@ -266,21 +287,25 @@ else
     echo "[migrate] 017 already applied (stage<=7 constraint present), skipping"
 fi
 
+fi  # fim do v3 fence (legacy 005-017)
+
 # Gate 018: reset completo do curriculum (v3 - 16 missoes + final exam stage 17).
-# Sentinel COMPOSTO: (slug 's1-o-que-significa-ia' existe) AND (total lessons = 7).
-# So' o slug nao basta porque um partial run pode ter inserido as licoes
-# antes do erro de FK em child_safety_events fazer rollback (ou state de
-# debugging manual). Total = 7 (6 da Missao 01 + 1 final exam) bate apenas
-# quando a transacao inteira fechou com sucesso.
-# NOTE: quando proxima migration adicionar mais licoes (ex: Missao 02),
-# este sentinel ficara em estado "completou mas count > 7" -> retorna false
-# e tentaria rodar 018 de novo. Pra evitar isso, futuras migrations devem
-# usar seus proprios gates e o gate 018 deve ser substituido por algo
-# imutavel (ex: existencia de uma constant marker row). Por ora, OK.
-LESSONS_RESET=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-significa-ia') AND (SELECT count(*) FROM lessons) = 7;" 2>/dev/null | tr -d ' \n')
+# Sentinel SLUG-ONLY: 's1-o-que-significa-ia' existe.
+#
+# Antes era composto (slug + count=7), seguindo a NOTE que avisava do bug.
+# O bug se materializou exatamente como previsto quando 019 adicionou mais
+# 6 licoes: count virou 13 != 7, gate 018 disparou em todo boot, wipava
+# a Missao 02, re-inseria Missao 01, depois 019 re-inseria a Missao 02.
+# Sistema se auto-curava via trabalho repetido + perda silenciosa de
+# lesson_progress e chat_sessions a cada restart.
+#
+# Slug-only e' seguro porque a 018 esta envolta em BEGIN/COMMIT - se a
+# transacao falhar a qualquer ponto (FK ou outro), tudo da rollback e o
+# slug nao persiste. Logo "slug existe" => "transacao inteira sucedeu".
+LESSONS_RESET=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-significa-ia');" 2>/dev/null | tr -d ' \n')
 
 if [ "$LESSONS_RESET" = "t" ]; then
-    echo "[migrate] 018 already applied (curriculum v3 reset completo - slug + count=7), skipping"
+    echo "[migrate] 018 already applied (curriculum v3 sentinel present), skipping"
 else
     echo "[migrate] clearing any aborted transaction state before 018..."
     psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
