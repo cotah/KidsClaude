@@ -29,21 +29,38 @@ ALTER TABLE lessons ADD CONSTRAINT lessons_stage_check
   CHECK (stage >= 1 AND stage <= 17);
 
 -- 3) Limpa conteudo antigo (ordem importa por causa das FKs sem CASCADE)
--- 3a) chat_sessions: FK lesson_id NOT NULL sem CASCADE - tem que ir antes.
---     Deletar chat_sessions cascateia chat_messages.
+-- Filtro 'is_final_exam = FALSE' e' defensivo: garante que o final exam
+-- (que vai ser movido pra stage 17 no passo 4) nunca seja apagado, mesmo
+-- se ele estiver em algum estado intermediario por um deploy anterior.
+
+-- 3a) child_safety_events: FK session_id (nullable, sem CASCADE) -> chat_sessions.
+--     Tem que ir ANTES de chat_sessions, senao trava a transacao:
+--     "update or delete on chat_sessions violates FK child_safety_events_session_id_fkey".
+--     Bug encontrado na 1a tentativa de deploy da 018 - migration rodava
+--     em transacao, falhava aqui e fazia rollback total (DB ficava intocada).
+DELETE FROM child_safety_events
+WHERE session_id IN (
+  SELECT id FROM chat_sessions
+  WHERE lesson_id IN (
+    SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE
+  )
+);
+
+-- 3b) chat_sessions: FK lesson_id NOT NULL sem CASCADE.
+--     Deletar chat_sessions cascateia chat_messages (ON DELETE CASCADE).
 DELETE FROM chat_sessions
-WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6);
+WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE);
 
--- 3b) prompt_templates: FK sem CASCADE.
+-- 3c) prompt_templates: FK sem CASCADE.
 DELETE FROM prompt_templates
-WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6);
+WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE);
 
--- 3c) lesson_progress: FK sem CASCADE.
+-- 3d) lesson_progress: FK sem CASCADE.
 DELETE FROM lesson_progress
-WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6);
+WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE);
 
--- 3d) lessons: challenges sao deletados automaticamente via ON DELETE CASCADE.
-DELETE FROM lessons WHERE stage <= 6;
+-- 3e) lessons: challenges sao deletados automaticamente via ON DELETE CASCADE.
+DELETE FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE;
 
 -- 4) Move final exam pra stage 17
 UPDATE lessons SET stage = 17 WHERE is_final_exam = TRUE;

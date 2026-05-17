@@ -267,19 +267,27 @@ else
 fi
 
 # Gate 018: reset completo do curriculum (v3 - 16 missoes + final exam stage 17).
-# Sentinel: slug 's1-o-que-significa-ia', criado exclusivamente pela 018 e
-# imune a renumeracoes futuras. Se existe -> 018 ja' rodou; senao -> rodar.
-CURRICULUM_V3_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-significa-ia');" 2>/dev/null | tr -d ' \n')
+# Sentinel COMPOSTO: (slug 's1-o-que-significa-ia' existe) AND (total lessons = 7).
+# So' o slug nao basta porque um partial run pode ter inserido as licoes
+# antes do erro de FK em child_safety_events fazer rollback (ou state de
+# debugging manual). Total = 7 (6 da Missao 01 + 1 final exam) bate apenas
+# quando a transacao inteira fechou com sucesso.
+# NOTE: quando proxima migration adicionar mais licoes (ex: Missao 02),
+# este sentinel ficara em estado "completou mas count > 7" -> retorna false
+# e tentaria rodar 018 de novo. Pra evitar isso, futuras migrations devem
+# usar seus proprios gates e o gate 018 deve ser substituido por algo
+# imutavel (ex: existencia de uma constant marker row). Por ora, OK.
+LESSONS_RESET=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-significa-ia') AND (SELECT count(*) FROM lessons) = 7;" 2>/dev/null | tr -d ' \n')
 
-if [ "$CURRICULUM_V3_APPLIED" = "f" ]; then
+if [ "$LESSONS_RESET" = "t" ]; then
+    echo "[migrate] 018 already applied (curriculum v3 reset completo - slug + count=7), skipping"
+else
     echo "[migrate] clearing any aborted transaction state before 018..."
     psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
 
     echo "[migrate] running 018_curriculum_v3_reset.sql..."
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/018_curriculum_v3_reset.sql
     echo "[migrate] 018 done"
-else
-    echo "[migrate] 018 already applied (curriculum v3 sentinel present), skipping"
 fi
 
 echo "[migrate] done. starting server..."
