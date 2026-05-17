@@ -290,4 +290,26 @@ else
     echo "[migrate] 018 done"
 fi
 
+# Gate 019: insere conteudo da Missao 02 (6 licoes + 12 challenges + 15 templates).
+# Sentinel composto (mesmo pattern da 018): (slug 's2-ia-aprende-como-crianca'
+# existe) AND (count(lessons) = 13). 13 = 7 da 018 + 6 da 019. So' o slug nao
+# bastaria - num partial run hipotetico ele poderia existir sem o resto.
+# Quando proxima migration (020 Missao 03) adicionar +6 lessons, este gate
+# ficara permanentemente "true" porque count vai virar 19, mas a logica e'
+# AND - precisa do count=13 EXATO. Aqui esta o catch: assim que a 020 rodar,
+# este gate retorna "false" e tentaria rodar 019 de novo. SOLUCAO: cada
+# migration de conteudo deve checar APENAS pelo slug proprio. Mudei abaixo.
+MISSAO_02_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's2-ia-aprende-como-crianca');" 2>/dev/null | tr -d ' \n')
+
+if [ "$MISSAO_02_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 019..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 019_missao_02.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/019_missao_02.sql
+    echo "[migrate] 019 done"
+else
+    echo "[migrate] 019 already applied (s2-ia-aprende-como-crianca present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
