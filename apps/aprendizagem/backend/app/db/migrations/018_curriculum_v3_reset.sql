@@ -28,16 +28,23 @@ ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_stage_check;
 ALTER TABLE lessons ADD CONSTRAINT lessons_stage_check
   CHECK (stage >= 1 AND stage <= 17);
 
--- 3) Limpa conteudo antigo (ordem importa por causa das FKs sem CASCADE)
--- Filtro 'is_final_exam = FALSE' e' defensivo: garante que o final exam
--- (que vai ser movido pra stage 17 no passo 4) nunca seja apagado, mesmo
--- se ele estiver em algum estado intermediario por um deploy anterior.
+-- 3) Limpa conteudo antigo (ordem importa por causa das FKs sem CASCADE).
+-- Filtro 'is_final_exam = FALSE' defensivo: garante que o final exam
+-- nunca seja apagado, mesmo num estado intermediario por deploy anterior.
+--
+-- Mapa completo de FKs apontando pras tabelas alvo (verificado contra
+-- todas as migrations 001-017):
+--   lessons      <- lesson_progress (no cascade)
+--                <- challenges (CASCADE) <- challenge_attempts (no cascade)
+--                <- prompt_templates (no cascade)
+--                <- chat_sessions (no cascade) <- chat_messages (CASCADE)
+--                                              <- child_safety_events (no cascade, nullable)
+-- 5 FKs sem CASCADE precisam de DELETE explicito na ordem certa
+-- (de filhas mais profundas pras mais rasas).
 
--- 3a) child_safety_events: FK session_id (nullable, sem CASCADE) -> chat_sessions.
---     Tem que ir ANTES de chat_sessions, senao trava a transacao:
---     "update or delete on chat_sessions violates FK child_safety_events_session_id_fkey".
---     Bug encontrado na 1a tentativa de deploy da 018 - migration rodava
---     em transacao, falhava aqui e fazia rollback total (DB ficava intocada).
+-- 3.1) child_safety_events -> chat_sessions
+--      Sem isso: "update or delete on chat_sessions violates FK
+--      child_safety_events_session_id_fkey"
 DELETE FROM child_safety_events
 WHERE session_id IN (
   SELECT id FROM chat_sessions
@@ -46,20 +53,37 @@ WHERE session_id IN (
   )
 );
 
--- 3b) chat_sessions: FK lesson_id NOT NULL sem CASCADE.
---     Deletar chat_sessions cascateia chat_messages (ON DELETE CASCADE).
+-- 3.2) chat_sessions -> lessons. Cascateia chat_messages (ON DELETE CASCADE).
 DELETE FROM chat_sessions
 WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE);
 
--- 3c) prompt_templates: FK sem CASCADE.
+-- 3.3) challenge_attempts -> challenges
+--      Sem isso: "update or delete on challenges violates FK
+--      challenge_attempts_challenge_id_fkey". Tem que ir antes de challenges,
+--      que por sua vez tem que ir antes de lessons (mesmo com CASCADE em
+--      challenges.lesson_id, queremos delete explicito pra clareza).
+DELETE FROM challenge_attempts
+WHERE challenge_id IN (
+  SELECT id FROM challenges
+  WHERE lesson_id IN (
+    SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE
+  )
+);
+
+-- 3.4) prompt_templates -> lessons.
 DELETE FROM prompt_templates
 WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE);
 
--- 3d) lesson_progress: FK sem CASCADE.
+-- 3.5) challenges -> lessons. Explicito mesmo com CASCADE pra deixar ordem
+--      auto-documentada; e' no-op se cascade ja' rodou antes.
+DELETE FROM challenges
+WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE);
+
+-- 3.6) lesson_progress -> lessons.
 DELETE FROM lesson_progress
 WHERE lesson_id IN (SELECT id FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE);
 
--- 3e) lessons: challenges sao deletados automaticamente via ON DELETE CASCADE.
+-- 3.7) lessons. Todas as filhas ja' foram esvaziadas; DELETE limpo.
 DELETE FROM lessons WHERE stage <= 6 AND is_final_exam = FALSE;
 
 -- 4) Move final exam pra stage 17

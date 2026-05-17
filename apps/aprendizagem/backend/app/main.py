@@ -66,17 +66,17 @@ async def lifespan(app: FastAPI):
     # workers/reboots futuros encontram o marker e pulam.
     # Pra forcar nova invalidacao num release futuro, mudar o nome do marker.
     try:
-        # Marker bumpado pra v3_b: o boot anterior rodou o wipe enquanto
-        # a migration 018 ainda estava em loop de falha (FK child_safety_events).
-        # Acessos a /play entre tentativas repoluiram o cache com dados antigos
-        # e o marker original travou novo wipe. Mudar o nome do marker forca
-        # nova execucao - sem isso, kid continua vendo /play stale por ate 5min.
-        if await cache.try_acquire_one_shot("cache_wiped:curriculum_v3_b"):
+        # Marker bumpado pra v3_c: segunda iteracao de fix da migration 018
+        # (FK challenge_attempts -> challenges). Os deploys falhos anteriores
+        # provavelmente re-poluiram o cache com dados antigos entre tentativas;
+        # marker novo garante wipe limpo agora que a migration finalmente
+        # passa. Pra forcar nova invalidacao em release futuro, mudar nome.
+        if await cache.try_acquire_one_shot("cache_wiped:curriculum_v3_c"):
             await cache.delete_pattern("stages:*")
             await cache.delete_pattern("lessons:*")
-            logger.info("Cache stages/lessons invalidado pos curriculum v3 (b)")
+            logger.info("Cache stages/lessons invalidado pos curriculum v3 (c)")
         else:
-            logger.info("Cache curriculum v3_b ja' invalidado anteriormente - skip")
+            logger.info("Cache curriculum v3_c ja' invalidado anteriormente - skip")
     except Exception as e:
         # Fail-open: cache wipe nao deve travar o boot.
         logger.warning("Falha no cache wipe one-shot", error=str(e))
