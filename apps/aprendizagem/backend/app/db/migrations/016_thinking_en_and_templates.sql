@@ -13,6 +13,14 @@
 
 BEGIN;
 
+-- 0) Relaxa CHECK de age_band em prompt_templates pra aceitar '6-18'
+-- (mesmo padrao que migration 015 fez com lessons.age_band).
+-- Sem isso, INSERT dos templates de Stage 2 com age_band='6-18'
+-- falham com prompt_templates_age_band_check violation.
+ALTER TABLE prompt_templates DROP CONSTRAINT IF EXISTS prompt_templates_age_band_check;
+ALTER TABLE prompt_templates ADD CONSTRAINT prompt_templates_age_band_check
+  CHECK (age_band = ANY (ARRAY['6-8','9-10','11-12','12+','6-18']));
+
 -- 1) Backfill content_blocks_en pras 6 licoes de Stage 2
 UPDATE lessons SET content_blocks_en = $$[
   {"type":"text","content":"You know when you study hard for a test but still get a question wrong? AI makes mistakes too — and understanding that is the secret to using AI smartly! AI learns by reading billions of texts written by humans. But humans also make mistakes, write wrong things, or have different opinions. AI absorbed all of that together — the good and the bad."},
