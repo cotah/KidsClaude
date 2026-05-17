@@ -97,9 +97,9 @@ export function StageCard({ stage, className }: StageCardProps) {
               <h3 className="text-kid-lg font-bold text-gray-800">
                 {tInfo(`${stage.stage}.name`)}
               </h3>
-              <span className="text-kid-sm text-gray-600">
-                {tInfo(`${stage.stage}.age_band_label`)}
-              </span>
+              {/* age_band_label removida da home /play - estagios sao
+                  escolhidos por trilha, nao por idade. A chave i18n
+                  continua usada em /play/stage/[stageId]/page.tsx. */}
             </div>
           </div>
           <div className="flex flex-col items-end space-y-2">
