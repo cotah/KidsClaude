@@ -144,15 +144,16 @@ class TestCurriculumRedesign:
         Test agora valida o dicionario contra a soma total (23 licoes).
         """
         expected_lessons_per_stage = {
-            1: 4,
-            2: 6,
-            3: 4,
-            4: 4,
-            5: 4,
-            6: 1,
+            1: 4,   # Discovery
+            2: 6,   # Thinking (migration 015)
+            3: 4,   # Exploration
+            4: 4,   # Creation
+            5: 4,   # Prompt Engineering
+            6: 6,   # Mastery (migration 017 - 5 conteudo + 1 teste)
+            7: 1,   # Final Exam (moved from 6 to 7 by migration 017)
         }
         total = sum(expected_lessons_per_stage.values())
-        assert total == 23, f"Esperadas 23 licoes total, dicionario soma {total}"
+        assert total == 29, f"Esperadas 29 licoes total, dicionario soma {total}"
 
     @pytest.mark.asyncio
     async def test_new_age_bands(self):

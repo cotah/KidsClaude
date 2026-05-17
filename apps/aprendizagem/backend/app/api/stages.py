@@ -46,15 +46,17 @@ async def get_stages(auth: AnyAuth, db: DBClient):
             logger.warning("Cache de stages com shape invalido - recomputando", error=str(e))
 
     try:
-        # Define informações estáticas das stages (5 stages regulares + final exam).
-        # Stage 2 "Thinking" foi inserida na migration 015 entre Discovery (1) e
-        # Exploration (que mudou de 2 para 3); demais foram renumeradas em cascata.
+        # Define informações estáticas das stages (6 stages regulares + final exam).
+        # Stage 2 "Thinking" inserida na migration 015 entre Discovery (1) e
+        # Exploration. Stage 6 "Mastery" inserida na 017 - final exam moveu
+        # de stage 6 pra stage 7. Demais foram renumeradas em cascata.
         stage_info = {
             1: {"name": "Discovery", "description": "Vamos descobrir o que e IA", "age_band_label": "6-8 anos", "difficulty": "easy"},
             2: {"name": "Thinking", "description": "Como a IA pensa — e onde ela erra", "age_band_label": "6-18 anos", "difficulty": "medium"},
             3: {"name": "Exploration", "description": "Entender como prompts funcionam", "age_band_label": "9-10 anos", "difficulty": "medium"},
             4: {"name": "Creation", "description": "Criar coisas com o Claude", "age_band_label": "11-12 anos", "difficulty": "hard"},
-            5: {"name": "Prompt Engineering", "description": "Técnicas avançadas de prompting", "age_band_label": "12+ anos", "difficulty": "advanced"}
+            5: {"name": "Prompt Engineering", "description": "Técnicas avançadas de prompting", "age_band_label": "12+ anos", "difficulty": "advanced"},
+            6: {"name": "Mastery", "description": "Você como AI Engineer", "age_band_label": "6-18 anos", "difficulty": "advanced"}
         }
 
         # Busca progresso por stage. Duas queries separadas para evitar passar
@@ -101,9 +103,9 @@ async def get_stages(auth: AnyAuth, db: DBClient):
             if total == completed and completed > 0:
                 completed_stages.add(stage_num)
 
-        # Monta resposta das stages (5 stages regulares)
+        # Monta resposta das stages (6 stages regulares)
         stages = []
-        for stage_num in range(1, 6):
+        for stage_num in range(1, 7):
             info = stage_info[stage_num]
             progress = progress_map.get(stage_num, {"total": 0, "completed": 0})
 
@@ -146,8 +148,8 @@ async def get_stages(auth: AnyAuth, db: DBClient):
                     exam_progress and exam_progress[0]['status'] == 'completed'
                 )
 
-            # Exame desbloqueado se todas as 5 stages estão completas
-            exam_unlocked = {1, 2, 3, 4, 5}.issubset(completed_stages)
+            # Exame desbloqueado se todas as 6 stages estão completas
+            exam_unlocked = {1, 2, 3, 4, 5, 6}.issubset(completed_stages)
 
             final_exam = FinalExamInfo(
                 lesson_id=exam_lesson_id,

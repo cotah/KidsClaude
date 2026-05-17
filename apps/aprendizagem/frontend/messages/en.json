@@ -190,6 +190,11 @@
       "name": "Prompt Engineering",
       "description": "Advanced prompting techniques",
       "age_band_label": "ages 12+"
+    },
+    "6": {
+      "name": "Mastery",
+      "description": "You as an AI Engineer",
+      "age_band_label": "ages 6-18"
     }
   },
   "child_overview": {

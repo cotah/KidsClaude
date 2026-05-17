@@ -248,4 +248,19 @@ else
     echo "[migrate] 016 already applied (templates for s2-ia-pode-errar present), skipping"
 fi
 
+# Gate 017: nova Stage 6 "Mastery" + final exam movido pra stage 7.
+# Sentinel: lessons_stage_check ja aceita stage <= 7.
+STAGE_7_ALLOWED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='lessons'::regclass AND conname='lessons_stage_check' AND pg_get_constraintdef(oid) LIKE '%<= 7%');" 2>/dev/null | tr -d ' \n')
+
+if [ "$STAGE_7_ALLOWED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 017..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 017_mastery_stage.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/017_mastery_stage.sql
+    echo "[migrate] 017 done"
+else
+    echo "[migrate] 017 already applied (stage<=7 constraint present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
