@@ -119,3 +119,29 @@ async def delete_pattern(pattern: str) -> None:
             await client.delete(*keys)
     except RedisError as e:
         logger.warning("Cache delete_pattern falhou", pattern=pattern, error=str(e))
+
+
+async def try_acquire_one_shot(marker_key: str) -> bool:
+    """
+    SETNX permanente pra garantir que uma operacao one-shot rode no MAXIMO
+    uma vez por marker_key na vida do Redis (sobrevive a reboots de worker
+    e a workers concorrentes).
+
+    Retorna True se pegou o lock (caller deve executar a operacao) e False
+    se ja' foi feito antes. Marker key persiste sem TTL - mudar o nome do
+    marker pra forcar nova execucao em um curriculum/release futuro.
+
+    Fail-open: se Redis indisponivel, devolve True. O caller deve usar isso
+    pra operacoes idempotentes (delete_pattern de cache e' o caso ideal -
+    rodar a mais ou a menos nao quebra estado).
+    """
+    client = await get_redis()
+    if not client:
+        return True
+    try:
+        # set NX sem TTL: marker fica ate alguem deletar manualmente.
+        acquired = await client.set(marker_key, "1", nx=True)
+        return bool(acquired)
+    except RedisError as e:
+        logger.warning("try_acquire_one_shot falhou", marker_key=marker_key, error=str(e))
+        return True

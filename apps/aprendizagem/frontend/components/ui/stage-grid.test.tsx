@@ -4,10 +4,13 @@ import { StageGrid } from './stage-grid';
 import { mockStagesResponse } from '@/lib/mock/data';
 
 describe('StageGrid', () => {
-  it('renders 4 stage cards plus final exam', () => {
+  it('renders all stage cards from the response plus final exam', () => {
     render(<StageGrid stagesData={mockStagesResponse} />);
 
-    // Should show all 4 stages
+    // Should show the stages present in mockStagesResponse.
+    // Mock data ainda usa o curriculum antigo (Discovery etc) - assertions
+    // continuam validas contra os mocks. Curriculum v3 (16 missoes) e' o
+    // que vai ao vivo - prod renderiza o que vier do backend.
     expect(screen.getByText('Discovery')).toBeInTheDocument();
     expect(screen.getByText('Exploration')).toBeInTheDocument();
     expect(screen.getByText('Creation')).toBeInTheDocument();

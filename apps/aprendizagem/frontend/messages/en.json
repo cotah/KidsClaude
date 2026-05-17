@@ -129,7 +129,7 @@
     "LEVEL_10": { "name": "Legendary", "description": "Reached level 10" }
   },
   "final_exam_card": {
-    "locked_message": "Complete all 4 stages first!"
+    "locked_message": "Complete all 16 missions first!"
   },
   "exam_page": {
     "back_to_hub": "Back to Hub",
@@ -430,7 +430,7 @@
     "mascot_streak": "Keep it up! You have an amazing <b>{days}-day</b> learning streak! 🔥",
     "mascot_no_streak": "Let's start a new learning adventure! How about doing a lesson?",
     "section_path_title": "Your Learning Path",
-    "section_path_subtitle": "Complete the 4 stages and unlock the final project!",
+    "section_path_subtitle": "Complete all 16 missions and unlock the final project!",
     "loading": "Loading...",
     "stages_load_error_title": "Couldn't load the stages.",
     "stages_load_error_unknown": "Unknown error",

@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.dependencies import limiter
 from app.db.client import init_database, close_database
+from app.core import cache
 from app.api import auth, children, lessons, chat, parents, health, exam, stages
 # Importes para registrar endpoints nas rotas spec-corretas (corrige prefixos)
 from app.api.chat import usage_heartbeat, list_child_sessions
@@ -56,6 +57,24 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Falha ao conectar banco", error=str(e))
         raise
+
+    # One-shot: invalida cache de stages/lessons apos o curriculum v3
+    # (migration 018). As keys antigas no Redis (TTL 5min/1h) ainda servem
+    # o curriculum antigo - sem o wipe explicito, kid que acessou /play
+    # antes do deploy ve o cache stale ate expirar. Marker no Redis garante
+    # que so' o primeiro worker apos o boot do release v3 faz o wipe;
+    # workers/reboots futuros encontram o marker e pulam.
+    # Pra forcar nova invalidacao num release futuro, mudar o nome do marker.
+    try:
+        if await cache.try_acquire_one_shot("cache_wiped:curriculum_v3"):
+            await cache.delete_pattern("stages:*")
+            await cache.delete_pattern("lessons:*")
+            logger.info("Cache stages/lessons invalidado pos curriculum v3")
+        else:
+            logger.info("Cache curriculum v3 ja' invalidado anteriormente - skip")
+    except Exception as e:
+        # Fail-open: cache wipe nao deve travar o boot.
+        logger.warning("Falha no cache wipe one-shot", error=str(e))
 
     yield
 

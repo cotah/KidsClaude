@@ -10,7 +10,8 @@ interface StageGridProps {
 }
 
 /**
- * Grid principal do hub de stages - 4 cards de stage + 1 card final exam
+ * Grid principal do hub de stages - N cards de stage (curriculum v3: 16 missoes)
+ * + 1 card final exam. Quantidade vem do backend, sem hardcode aqui.
  */
 export function StageGrid({ stagesData, className }: StageGridProps) {
   // Defensivo: se stages nao for array (shape errado), avisa em vez de
@@ -27,7 +28,7 @@ export function StageGrid({ stagesData, className }: StageGridProps) {
 
   return (
     <div className={className}>
-      {/* Grid das 4 stages */}
+      {/* Grid das missoes (quantidade vem do backend) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {stagesData.stages.map((stage) => (
           <StageCard key={stage.stage} stage={stage} />

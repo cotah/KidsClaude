@@ -129,7 +129,7 @@
     "LEVEL_10": { "name": "Lendario", "description": "Alcancou o nivel 10" }
   },
   "final_exam_card": {
-    "locked_message": "Complete todas as 4 stages primeiro!"
+    "locked_message": "Complete todas as 16 missões primeiro!"
   },
   "exam_page": {
     "back_to_hub": "Voltar ao Hub",
@@ -430,7 +430,7 @@
     "mascot_streak": "Continue assim! Você tem uma sequência incrível de <b>{days} dias</b> aprendendo! 🔥",
     "mascot_no_streak": "Vamos começar uma nova aventura de aprendizado! Que tal fazer uma lição?",
     "section_path_title": "Seu Caminho de Aprendizado",
-    "section_path_subtitle": "Complete as 4 stages e desbloqueie o projeto final!",
+    "section_path_subtitle": "Complete as 16 missões e desbloqueie o projeto final!",
     "loading": "Carregando...",
     "stages_load_error_title": "Não foi possível carregar as stages.",
     "stages_load_error_unknown": "Erro desconhecido",
