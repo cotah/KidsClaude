@@ -218,10 +218,13 @@ else
 fi
 
 # Gate 015: novo Stage 2 "Thinking" + renumera demais (final exam vai pra 6).
-# Sentinel: lessons_stage_check ja aceita stage <= 6.
-STAGE_6_ALLOWED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='lessons'::regclass AND conname='lessons_stage_check' AND pg_get_constraintdef(oid) LIKE '%<= 6%');" 2>/dev/null | tr -d ' \n')
+# Sentinel ANTIGO checava lessons_stage_check LIKE '%<= 6%', mas 017 mexeu
+# nessa constraint pra <= 7 - o gate parou de bater e 015 tentava rodar
+# de novo. Sentinel NOVO: existencia do slug 's2-ia-pode-errar', que 015
+# cria e nada mais altera. Se existe, 015 ja rodou - skip.
+THINKING_STAGE_EXISTS=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's2-ia-pode-errar');" 2>/dev/null | tr -d ' \n')
 
-if [ "$STAGE_6_ALLOWED" = "f" ]; then
+if [ "$THINKING_STAGE_EXISTS" = "f" ]; then
     echo "[migrate] clearing any aborted transaction state before 015..."
     psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
 
@@ -229,7 +232,7 @@ if [ "$STAGE_6_ALLOWED" = "f" ]; then
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/015_thinking_stage.sql
     echo "[migrate] 015 done"
 else
-    echo "[migrate] 015 already applied (stage<=6 constraint present), skipping"
+    echo "[migrate] 015 already applied (thinking stage present), skipping"
 fi
 
 # Gate 016: backfill EN content_blocks + adicionar prompt_templates pras
