@@ -27,6 +27,12 @@ import pytz
 logger = structlog.get_logger()
 router = APIRouter()
 
+# Limite de mensagens por sessao de chat de licao. NAO se aplica ao exame
+# final - aquele tem o proprio fluxo em app/api/exam.py e sua propria politica.
+# Reduzido de 30 para 10: licoes sao curtas e pra criancas pequenas; 30
+# permitia conversas longas demais que desviavam do conteudo.
+LESSON_MAX_MESSAGES_PER_SESSION = 10
+
 
 def _max_message_length_for_age(age: int) -> int:
     """
@@ -179,8 +185,8 @@ async def send_message(
 
         session = session_data[0]
 
-        # Verifica limite de mensagens por sessão
-        if session['message_count'] >= 30:  # MAX_MESSAGES_PER_SESSION
+        # Verifica limite de mensagens por sessão (chat de licao - exam tem seu proprio).
+        if session['message_count'] >= LESSON_MAX_MESSAGES_PER_SESSION:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail={"error": {"code": "RATE_LIMITED", "message": "Limite de mensagens atingido"}}
