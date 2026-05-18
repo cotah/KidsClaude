@@ -425,4 +425,19 @@ else
     echo "[migrate] 024 already applied (s7-ia-professor-particular present), skipping"
 fi
 
+# Gate 025: insere conteudo da Missao 08 (6 licoes + 12 challenges + 15 templates).
+# Sentinel slug-only: 's8-ia-organizar-vida'.
+MISSAO_08_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's8-ia-organizar-vida');" 2>/dev/null | tr -d ' \n')
+
+if [ "$MISSAO_08_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 025..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 025_missao_08.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/025_missao_08.sql
+    echo "[migrate] 025 done"
+else
+    echo "[migrate] 025 already applied (s8-ia-organizar-vida present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
