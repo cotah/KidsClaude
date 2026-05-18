@@ -156,7 +156,8 @@ class TestCurriculumRedesign:
         #   027: Missao 10 - O futuro da IA (6 lessons)
         #   028: Missao 11 - APIs, MCP e conexoes (6 lessons)
         #   029: Missao 12 - Agentes e automacoes (6 lessons)
-        # Stages 13-16 ficam vazias ate' migrations 030+ serem escritas.
+        #   030: Missao 13 - Criar projetos reais (6 lessons)
+        # Stages 14-16 ficam vazias ate' migrations 031+ serem escritas.
         # Final exam fica em stage 17 (movido pela 018).
         expected_lessons_per_stage = {
             1:  6,   # Missao 01 - O que e IA? (migration 018)
@@ -171,10 +172,11 @@ class TestCurriculumRedesign:
             10: 6,   # Missao 10 - O futuro da IA (migration 027)
             11: 6,   # Missao 11 - APIs, MCP e conexoes (migration 028)
             12: 6,   # Missao 12 - Agentes e automacoes (migration 029)
+            13: 6,   # Missao 13 - Criar projetos reais (migration 030)
             17: 1,   # Final Exam (stage 17 desde a 018)
         }
         total = sum(expected_lessons_per_stage.values())
-        assert total == 73, f"Esperadas 73 licoes total, dicionario soma {total}"
+        assert total == 79, f"Esperadas 79 licoes total, dicionario soma {total}"
 
     @pytest.mark.asyncio
     async def test_new_age_bands(self):
