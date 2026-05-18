@@ -353,4 +353,19 @@ else
     echo "[migrate] 020 already applied (s3-o-que-e-prompt present), skipping"
 fi
 
+# Gate 021: insere conteudo da Missao 04 (6 licoes + 12 challenges + 15 templates).
+# Sentinel slug-only: 's4-o-que-sao-alucinacoes'. BEGIN/COMMIT garante atomicidade.
+MISSAO_04_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's4-o-que-sao-alucinacoes');" 2>/dev/null | tr -d ' \n')
+
+if [ "$MISSAO_04_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 021..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 021_missao_04.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/021_missao_04.sql
+    echo "[migrate] 021 done"
+else
+    echo "[migrate] 021 already applied (s4-o-que-sao-alucinacoes present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
