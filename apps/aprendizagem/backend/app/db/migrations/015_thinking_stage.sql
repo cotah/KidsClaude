@@ -16,10 +16,22 @@
 
 BEGIN;
 
--- 1) Relaxa CHECK do stage (1..5 -> 1..6)
-ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_stage_check;
-ALTER TABLE lessons ADD CONSTRAINT lessons_stage_check
-  CHECK (stage >= 1 AND stage <= 6);
+-- 1) Relaxa CHECK do stage (1..5 -> 1..6) - DEFENSIVO.
+-- So' aplica o ALTER se nenhuma linha existente vai violar a nova constraint.
+-- Cenarios:
+--   - Fresh DB (sem rows): aplica, constraint vira <= 6, segue 015 normal.
+--   - Apos 005 (rows stage 1..5): aplica, sem violacao.
+--   - DB ja' em estado v3 (rows stage > 6 como final exam=17): SKIP, nao
+--     rebaixa a constraint - segue migration sem quebrar, mesmo se o v3
+--     fence em run_migrations.sh tiver falhado por algum motivo (ex:
+--     slug sentinel 's1-o-que-significa-ia' ausente apos partial state).
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM lessons WHERE stage > 6) THEN
+    ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_stage_check;
+    ALTER TABLE lessons ADD CONSTRAINT lessons_stage_check
+      CHECK (stage >= 1 AND stage <= 6);
+  END IF;
+END $$;
 
 -- 2) Adiciona '6-18' ao age_band aceito
 ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_age_band_check;

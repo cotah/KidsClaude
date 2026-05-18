@@ -10,10 +10,17 @@
 
 BEGIN;
 
--- 1) Relaxa CHECK do stage: 1..6 -> 1..7
-ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_stage_check;
-ALTER TABLE lessons ADD CONSTRAINT lessons_stage_check
-  CHECK (stage >= 1 AND stage <= 7);
+-- 1) Relaxa CHECK do stage: 1..6 -> 1..7 - DEFENSIVO.
+-- Mesmo pattern da 015: so' aplica se nenhuma linha viola a nova constraint.
+-- Protege contra DB em estado v3 (rows com stage > 7) caso o v3 fence em
+-- run_migrations.sh tenha falhado e essa migration tente rodar de novo.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM lessons WHERE stage > 7) THEN
+    ALTER TABLE lessons DROP CONSTRAINT IF EXISTS lessons_stage_check;
+    ALTER TABLE lessons ADD CONSTRAINT lessons_stage_check
+      CHECK (stage >= 1 AND stage <= 7);
+  END IF;
+END $$;
 
 -- 2) Move final exam: stage 6 -> 7 (libera 6 pra Mastery)
 UPDATE lessons SET stage = 7 WHERE stage = 6 AND is_final_exam = TRUE;
