@@ -72,12 +72,24 @@ fi
 #   - 015 falharia: ALTER stage <= 6 com final exam em stage=17
 #   - 017 falharia: ALTER stage <= 7 com final exam em stage=17
 #
-# Sentinel do fence: slug 's1-o-que-significa-ia' (criado pela 018, nunca
-# deletado por ninguem). Se presente -> v3 ja' ativo -> pula tudo. Se ausente
-# -> DB fresca (ou pre-v3) -> roda a cadeia legacy normal pra construir o
-# estado, e depois 018 entra e converte pra v3.
+# Sentinel do fence: existencia da coluna lessons.chat_objective. A 018
+# faz "ALTER TABLE lessons ADD COLUMN IF NOT EXISTS chat_objective TEXT"
+# e nenhuma migration remove. Por que essa coluna em vez de um slug:
+#   - Sobrevive a DELETE de rows (DDL e DML sao axes independentes).
+#   - Sobrevive a deleção manual de qualquer linha especifica.
+#   - Independente de quantas missoes ja foram criadas (a 018 cria a coluna
+#     ANTES de inserir Missao 01 - quando a coluna existe, v3 esta ativo).
+# Versoes anteriores deste sentinel:
+#   v1: slug 's1-o-que-significa-ia' (frageis a deleção manual de rows)
+#   v2 (proposto, rejeitado): "WHERE stage > 4 AND NOT is_final_exam" -
+#       falsa negativa quando so' Missoes 01-04 existem (todas em stage 1..4).
 # =============================================================================
-HAS_V3=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's1-o-que-significa-ia');" 2>/dev/null | tr -d ' \n')
+HAS_V3=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (
+  SELECT 1 FROM information_schema.columns
+  WHERE table_schema = 'public'
+  AND table_name = 'lessons'
+  AND column_name = 'chat_objective'
+);" 2>/dev/null | tr -d ' \n')
 
 if [ "$HAS_V3" = "t" ]; then
     echo "[migrate] v3 fence: curriculum v3 ja' ativo - pulando legacy 005-017"
