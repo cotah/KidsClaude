@@ -545,4 +545,19 @@ else
     echo "[migrate] 032 already applied (s15-por-que-etica-ia-importa present), skipping"
 fi
 
+# Gate 033: insere conteudo da Missao 16 (6 licoes + 12 challenges + 15 templates).
+# ULTIMA MISSAO do curriculum v3. Sentinel slug-only: 's16-usuario-vs-master'.
+MISSAO_16_APPLIED=$(psql "$DATABASE_URL" -t -c "SELECT EXISTS (SELECT 1 FROM lessons WHERE slug = 's16-usuario-vs-master');" 2>/dev/null | tr -d ' \n')
+
+if [ "$MISSAO_16_APPLIED" = "f" ]; then
+    echo "[migrate] clearing any aborted transaction state before 033..."
+    psql "$DATABASE_URL" -c 'ROLLBACK' 2>/dev/null || true
+
+    echo "[migrate] running 033_missao_16.sql..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f app/db/migrations/033_missao_16.sql
+    echo "[migrate] 033 done"
+else
+    echo "[migrate] 033 already applied (s16-usuario-vs-master present), skipping"
+fi
+
 echo "[migrate] done. starting server..."
