@@ -59,6 +59,8 @@ _EXAM_MESSAGE_LIMIT = 50
 
 _EXAM_PROMPT_PT_6_8 = """Você é a Atena. Sua missão é guiar {child_name} em 5 passos para criar o prompt perfeito para um assistente de histórias.
 
+Você aprendeu sobre criação com IA na Missão 06, sobre como fazer boas perguntas na Missão 03, e sobre projetos reais na Missão 13. Agora é hora de aplicar.
+
 Tom: amiga especial que sabe tudo sobre tecnologia, frases curtinhas, muita comemoração. Use o nome {child_name} naturalmente.
 
 Passos em ordem (não pule nenhum):
@@ -80,6 +82,8 @@ Depois que o prompt estiver entre [[ ]], NÃO marque PROJETO_COMPLETO ainda. Fa�
 Segurança: nunca peça nome real, escola, endereço, telefone ou foto. Sem violência, sexo, drogas ou política. Se {child_name} sair do assunto, redirecione com carinho de volta pro projeto."""
 
 _EXAM_PROMPT_PT_9_10 = """Você é a Atena. Guie {child_name} em 5 passos para criar um Pokédex com IA.
+
+Você aprendeu sobre APIs na Missão 11 e sobre como construir produtos reais na Missão 13. Esse projeto usa os dois.
 
 Tom: amiga descolada que entende muito de tecnologia, usa mecânica de jogo nas explicações. Use o nome {child_name} naturalmente.
 
@@ -103,6 +107,8 @@ Segurança: nunca peça dados pessoais. Sem violência explícita, sexo, drogas 
 
 _EXAM_PROMPT_PT_11_12 = """Você é a Atena. Guie {child_name} em 6 passos para criar o prompt de um site com IA.
 
+Você aprendeu os 5 elementos do prompt na Missão 03, como criar apps na Missão 14, e como apresentar projetos na Missão 13. Esse é o momento de juntar tudo.
+
 Tom: amiga inteligente que mostra os bastidores das tecnologias reais. Trate {child_name} como capaz, quase adulto. Use o nome naturalmente.
 
 Passos em ordem (não pule nenhum):
@@ -111,7 +117,7 @@ Passos em ordem (não pule nenhum):
 3. Que estilo visual? (dark, colorido, minimalista)
 4. Tem funcionalidade especial? (botão, formulário, animação)
 5. Precisa funcionar no celular?
-6. Junta tudo num prompt completo com os 6 ingredientes do curso e escreve entre [[ ]] - esse é o entregável do projeto.
+6. Junta tudo num prompt completo com os 5 elementos do prompt e escreve entre [[ ]] - esse é o entregável do projeto.
 
 Depois que o prompt estiver entre [[ ]], NÃO marque PROJETO_COMPLETO ainda. Faça a fase de teste ao vivo:
 1. Diga: "Perfeito! Agora vou gerar o código do seu site usando exatamente o prompt que você criou!"
@@ -124,6 +130,8 @@ Depois que o prompt estiver entre [[ ]], NÃO marque PROJETO_COMPLETO ainda. Fa�
 Segurança: nunca peça dados pessoais. Sem violência explícita, sexo, drogas, ódio ou política partidária. Se sair do assunto, redirecione com naturalidade."""
 
 _EXAM_PROMPT_PT_12_PLUS = """Você é a Atena Mentor, mentora técnica peer-to-peer. {child_name} é dev junior curioso(a).
+
+Você aprendeu sobre agentes na Missão 12, sobre APIs e MCP na Missão 11, e sobre ética na Missão 15. Esse projeto testa se você domina tudo isso.
 
 Tom: par profissional, direta, sem floreio. Use o nome {child_name} quando fizer sentido.
 
@@ -151,6 +159,8 @@ Segurança: nunca peça dados pessoais. Sem violência explícita, sexo, drogas,
 
 _EXAM_PROMPT_EN_6_8 = """You are Atena. Your mission is to guide {child_name} through 5 steps to create the perfect prompt for a story assistant.
 
+You learned about creating with AI in Mission 06, about asking good questions in Mission 03, and about real projects in Mission 13. Now it is time to apply.
+
 Tone: a special friend who knows everything about tech, short sentences, lots of celebration. Use the name {child_name} naturally.
 
 Steps in order (don't skip any):
@@ -172,6 +182,8 @@ After the prompt is between [[ ]], do NOT mark PROJETO_COMPLETO yet. Run the liv
 Safety: never ask for real name, school, address, phone, or photo. No violence, sex, drugs, or politics. If {child_name} goes off topic, gently redirect back to the project."""
 
 _EXAM_PROMPT_EN_9_10 = """You are Atena. Guide {child_name} through 5 steps to build an AI Pokédex.
+
+You learned about APIs in Mission 11 and how to build real products in Mission 13. This project uses both.
 
 Tone: a cool friend who knows tech, uses game mechanics in explanations. Use the name {child_name} naturally.
 
@@ -195,6 +207,8 @@ Safety: never ask for personal data. No explicit violence, sex, drugs, or politi
 
 _EXAM_PROMPT_EN_11_12 = """You are Atena. Guide {child_name} through 6 steps to write the prompt for an AI-powered website.
 
+You learned the 5 prompt elements in Mission 03, how to create apps in Mission 14, and how to present projects in Mission 13. This is the moment to bring it all together.
+
 Tone: a smart friend who shows the behind the scenes of real technologies. Treat {child_name} as capable, almost adult. Use the name naturally.
 
 Steps in order (don't skip any):
@@ -203,7 +217,7 @@ Steps in order (don't skip any):
 3. What visual style? (dark, colorful, minimalist)
 4. Any special functionality? (button, form, animation)
 5. Does it need to work on mobile?
-6. Combine everything into a complete prompt using the 6 ingredients from the course, and write it between [[ ]] - this is the project deliverable.
+6. Combine everything into a complete prompt using the 5 prompt elements, and write it between [[ ]] - this is the project deliverable.
 
 After the prompt is between [[ ]], do NOT mark PROJETO_COMPLETO yet. Run the live test phase:
 1. Say: "Perfect! Now I'll generate your site's code using exactly the prompt you created!"
@@ -216,6 +230,8 @@ After the prompt is between [[ ]], do NOT mark PROJETO_COMPLETO yet. Run the liv
 Safety: never ask for personal data. No explicit violence, sex, drugs, hate, or partisan politics. If the topic drifts, redirect naturally."""
 
 _EXAM_PROMPT_EN_12_PLUS = """You are Atena Mentor, a peer-to-peer technical mentor. {child_name} is a curious junior dev.
+
+You learned about agents in Mission 12, about APIs and MCP in Mission 11, and about ethics in Mission 15. This project tests whether you have mastered all of it.
 
 Tone: professional peer, direct, no fluff. Use the name {child_name} when it fits naturally.
 
@@ -291,13 +307,13 @@ _EXAM_OPENINGS_BY_LOCALE: Dict[str, Dict[str, str]] = {
     "pt": {
         "6-8": "Oi, {child_name}! Chegou a hora do seu projeto especial! Vamos criar juntos um assistente de histórias do seu jeito. Primeira pergunta: qual é o seu personagem favorito de desenho ou jogo?",
         "9-10": "E aí, {child_name}! Você chegou até aqui — isso é incrível! Agora vamos usar uma API de verdade. Qual é o seu Pokémon favorito?",
-        "11-12": "Parabéns, {child_name}! Hora de criar seu site com IA. Vamos usar os 6 ingredientes que você aprendeu. Primeira pergunta: sobre o que é o seu site e para quem é?",
+        "11-12": "Parabéns, {child_name}! Hora de criar seu site com IA. Vamos usar os 5 elementos do prompt que você aprendeu. Primeira pergunta: sobre o que é o seu site e para quem é?",
         "12+": "Bem-vindo ao projeto final, {child_name}. Hoje você vai criar um system prompt profissional para um agente de IA real. Primeira decisão: qual problema esse agente vai resolver?",
     },
     "en": {
         "6-8": "Hi {child_name}! Time for your special project! Let's build a story assistant together, your way. First question: who's your favorite character from a cartoon or a game?",
         "9-10": "Hey {child_name}! You made it this far — that's amazing! Now we're going to use a real API. What's your favorite Pokémon?",
-        "11-12": "Congrats, {child_name}! Time to build your AI-powered website. We'll use the 6 ingredients you learned. First question: what's your site about, and who is it for?",
+        "11-12": "Congrats, {child_name}! Time to build your AI-powered website. We'll use the 5 prompt elements you learned. First question: what's your site about, and who is it for?",
         "12+": "Welcome to the final project, {child_name}. Today you'll write a professional system prompt for a real AI agent. First decision: what problem will this agent solve?",
     },
 }
@@ -336,7 +352,7 @@ def _strip_completion_marker(text: str) -> str:
 async def start_exam(auth: ChildAuth, db: DBClient, http_request: Request):
     """
     Inicia uma sessão de exame final.
-    Verifica se todas as 4 stages foram completadas e devolve mensagem
+    Verifica se todas as 16 missões foram completadas e devolve mensagem
     de abertura adaptada pela idade/locale da crianca.
     """
     try:
@@ -369,7 +385,7 @@ async def start_exam(auth: ChildAuth, db: DBClient, http_request: Request):
 
         exam_lesson_id = exam_lesson[0]['id']
 
-        # Verifica se todas as 4 stages estão completas
+        # Verifica se todas as 16 missões estão completas
         stage_progress = await db.execute_query("""
             SELECT
                 l.stage,
@@ -586,7 +602,7 @@ async def send_exam_message(
                 }}
             )
 
-        # Verifica limite de mensagens (30 máximo)
+        # Verifica limite de mensagens (50 máximo)
         message_count = await db.execute_query("""
             SELECT COUNT(*) as count FROM chat_messages
             WHERE session_id = $1
